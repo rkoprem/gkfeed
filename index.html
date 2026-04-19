@@ -9,7 +9,6 @@
 <meta name="apple-mobile-web-app-title" content="GK Dairy">
 <meta name="theme-color" content="#0A1628">
 <title>GK Dairy</title>
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%230A1628'/><text y='130' x='96' text-anchor='middle' font-size='110'>🐄</text></svg>">
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Noto+Sans+Tamil:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
@@ -331,7 +330,14 @@ tr:hover td{background:rgba(212,168,67,.04)}
   </div>
   <div style="margin-bottom:16px">
   <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">🎨 Theme</div>
-  <div id="theme-picker-area"><button class="theme-btn" data-theme="navy" onclick="applyTheme('navy')" style="padding:8px 12px;background:var(--surface2);border:2px solid var(--border);border-radius:10px;cursor:pointer;font-family:inherit;margin:3px;transition:all .15s"><span style="font-size:18px">🌊</span><div style="font-size:10px;color:var(--text);margin-top:3px">Navy</div></button><button class="theme-btn" data-theme="forest" onclick="applyTheme('forest')" style="padding:8px 12px;background:var(--surface2);border:2px solid var(--border);border-radius:10px;cursor:pointer;font-family:inherit;margin:3px;transition:all .15s"><span style="font-size:18px">🌿</span><div style="font-size:10px;color:var(--text);margin-top:3px">Forest</div></button><button class="theme-btn" data-theme="sunset" onclick="applyTheme('sunset')" style="padding:8px 12px;background:var(--surface2);border:2px solid var(--border);border-radius:10px;cursor:pointer;font-family:inherit;margin:3px;transition:all .15s"><span style="font-size:18px">🌅</span><div style="font-size:10px;color:var(--text);margin-top:3px">Sunset</div></button><button class="theme-btn" data-theme="purple" onclick="applyTheme('purple')" style="padding:8px 12px;background:var(--surface2);border:2px solid var(--border);border-radius:10px;cursor:pointer;font-family:inherit;margin:3px;transition:all .15s"><span style="font-size:18px">👑</span><div style="font-size:10px;color:var(--text);margin-top:3px">Purple</div></button></div></div><div class="sp-item" onclick="reconfigureSheets()">
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <button class="theme-btn" data-theme="navy"   onclick="applyTheme('navy')"   style="flex:1;min-width:60px;padding:8px 4px;background:var(--surface2);border:2px solid var(--border);border-radius:10px;cursor:pointer;font-family:inherit;text-align:center"><div style="font-size:18px">🌊</div><div style="font-size:10px;color:var(--text);margin-top:2px">Navy</div></button>
+    <button class="theme-btn" data-theme="forest" onclick="applyTheme('forest')" style="flex:1;min-width:60px;padding:8px 4px;background:var(--surface2);border:2px solid var(--border);border-radius:10px;cursor:pointer;font-family:inherit;text-align:center"><div style="font-size:18px">🌿</div><div style="font-size:10px;color:var(--text);margin-top:2px">Forest</div></button>
+    <button class="theme-btn" data-theme="sunset" onclick="applyTheme('sunset')" style="flex:1;min-width:60px;padding:8px 4px;background:var(--surface2);border:2px solid var(--border);border-radius:10px;cursor:pointer;font-family:inherit;text-align:center"><div style="font-size:18px">🌅</div><div style="font-size:10px;color:var(--text);margin-top:2px">Sunset</div></button>
+    <button class="theme-btn" data-theme="purple" onclick="applyTheme('purple')" style="flex:1;min-width:60px;padding:8px 4px;background:var(--surface2);border:2px solid var(--border);border-radius:10px;cursor:pointer;font-family:inherit;text-align:center"><div style="font-size:18px">👑</div><div style="font-size:10px;color:var(--text);margin-top:2px">Purple</div></button>
+  </div>
+</div>
+<div class="sp-item" onclick="reconfigureSheets()">
     <span class="sp-icon">📊</span>
     <div class="sp-text"><div class="sp-lbl">Google Sheets</div><div class="sp-sub">Reconnect / Change URL</div></div>
     <span class="sp-arrow">›</span>
@@ -1582,6 +1588,170 @@ function deleteVehicleLog(cc, id) {
   showPage('cc-vehicle');
 }
 
+// ==================== AUTH SYSTEM ====================
+// Each login has its own username + password
+// CC logins can only see their own CC data
+// Dairy admin can see everything + manage passwords
+
+var AUTH = {
+
+  // Default credentials (stored in localStorage, editable from Masters)
+  getUsers: function() {
+    var saved = localStorage.getItem('gkd_users');
+    if (saved) { try { return JSON.parse(saved); } catch(e){} }
+    // Default users
+    var defaults = [
+      { id: 'dairy', role: 'dairy', name: 'Main Dairy', username: 'admin',   password: 'dairy123',  canEdit: true },
+    ];
+    // Add CC users dynamically from CC Centers master
+    var centers = MasterDB.getCCCenters();
+    centers.forEach(function(cc) {
+      defaults.push({
+        id: cc.id,
+        role: 'cc',
+        name: cc.name,
+        username: cc.id,
+        password: 'cc123',
+        canEdit: true,
+      });
+    });
+    return defaults;
+  },
+
+  saveUsers: function(users) {
+    localStorage.setItem('gkd_users', JSON.stringify(users));
+  },
+
+  // Find user by username
+  findUser: function(username) {
+    return this.getUsers().find(function(u) {
+      return u.username.toLowerCase() === username.toLowerCase().trim();
+    });
+  },
+
+  // Verify login
+  login: function(username, password) {
+    var user = this.findUser(username);
+    if (!user) return { ok: false, error: 'Username தவறானது' };
+    if (user.password !== password) return { ok: false, error: 'Password தவறானது' };
+    return { ok: true, user: user };
+  },
+
+  // Current logged in user
+  currentUser: null,
+
+  // Check if user can access a CC's data
+  canAccessCC: function(ccId) {
+    if (!this.currentUser) return false;
+    if (this.currentUser.role === 'dairy') return true; // dairy sees all
+    return this.currentUser.id === ccId;
+  },
+
+  // Hash simple password (basic obfuscation for display)
+  maskPassword: function(pwd) {
+    return '•'.repeat(pwd.length);
+  },
+};
+
+// ==================== PASSWORD MANAGEMENT PAGE ====================
+function renderPasswordManager() {
+  var users = AUTH.getUsers();
+  var rows = users.map(function(u, i) {
+    return '<tr>'
+      + '<td>' + (u.role==='dairy'?'<span class="badge badge-gold">🏭 Dairy</span>':'<span class="badge badge-blue">🏪 CC</span>') + '</td>'
+      + '<td><strong>' + u.name + '</strong></td>'
+      + '<td><code style="background:var(--navy2);padding:2px 8px;border-radius:6px;font-size:12px;color:var(--accent2)">' + u.username + '</code></td>'
+      + '<td>'
+        + '<button onclick="editUserPassword('+i+')" style="background:rgba(30,136,229,.15);border:1px solid rgba(30,136,229,.3);color:var(--blue2);padding:5px 10px;border-radius:7px;font-size:11px;cursor:pointer">'
+        + '🔑 Change</button>'
+      + '</td>'
+      + '</tr>';
+  }).join('');
+
+  return '<div class="back-header">'
+    + '<div class="back-btn" onclick="showMasterDetail(\'password\')">←</div>'
+    + '<div class="back-title">🔑 Password Manager</div>'
+    + '</div>'
+    + '<div class="alert alert-info"><span class="alert-icon">ℹ️</span>'
+    + '<div>ஒவ்வொரு login-க்கும் தனி password. CC login-கள் தங்கள் data மட்டும் பார்க்கலாம்.</div></div>'
+    + '<div class="card">'
+    + '<div class="card-title"><span class="ct-icon">👥</span>All Users</div>'
+    + '<div class="tbl-wrap"><table>'
+    + '<thead><tr><th>Type</th><th>Name</th><th>Username</th><th>Action</th></tr></thead>'
+    + '<tbody>' + rows + '</tbody>'
+    + '</table></div>'
+    + '</div>'
+    + '<div class="card" id="pwd-edit-card" style="display:none">'
+    + '<div class="card-title" id="pwd-edit-title"><span class="ct-icon">✏️</span>Change Password</div>'
+    + '<div class="form-group"><label>New Username</label><input type="text" id="pwd-uname" placeholder="username"></div>'
+    + '<div class="form-group"><label>New Password</label><input type="password" id="pwd-new" placeholder="New password"></div>'
+    + '<div class="form-group"><label>Confirm Password</label><input type="password" id="pwd-confirm" placeholder="Confirm password"></div>'
+    + '<input type="hidden" id="pwd-user-idx">'
+    + '<div class="btn-row">'
+    + '<button class="btn btn-ghost" onclick="document.getElementById(\'pwd-edit-card\').style.display=\'none\'">Cancel</button>'
+    + '<button class="btn btn-gold" style="flex:1;justify-content:center" onclick="savePassword()">Save Password ✓</button>'
+    + '</div></div>'
+    + '<div class="card">'
+    + '<div class="card-title"><span class="ct-icon">🔄</span>Sync CC Users from Masters</div>'
+    + '<p style="font-size:12px;color:var(--text2);margin-bottom:12px">CC Center add/delete செய்தால் இங்கே sync பண்ணுங்கள்</p>'
+    + '<button class="btn btn-primary btn-full" onclick="syncCCUsers()">🔄 Sync CC Users</button>'
+    + '</div>';
+}
+
+function editUserPassword(idx) {
+  var users = AUTH.getUsers();
+  var user = users[idx];
+  if (!user) return;
+  document.getElementById('pwd-edit-card').style.display = 'block';
+  document.getElementById('pwd-edit-title').innerHTML = '<span class="ct-icon">✏️</span>Change — ' + user.name;
+  document.getElementById('pwd-uname').value = user.username;
+  document.getElementById('pwd-new').value = '';
+  document.getElementById('pwd-confirm').value = '';
+  document.getElementById('pwd-user-idx').value = idx;
+  document.getElementById('pwd-edit-card').scrollIntoView({behavior:'smooth'});
+}
+
+function savePassword() {
+  var idx = parseInt(document.getElementById('pwd-user-idx').value);
+  var uname = document.getElementById('pwd-uname').value.trim();
+  var newPwd = document.getElementById('pwd-new').value;
+  var confirm = document.getElementById('pwd-confirm').value;
+  if (!uname) { showToast('Username உள்ளிடவும்', 'error'); return; }
+  if (!newPwd) { showToast('Password உள்ளிடவும்', 'error'); return; }
+  if (newPwd !== confirm) { showToast('Passwords match ஆகல!', 'error'); return; }
+  if (newPwd.length < 4) { showToast('Minimum 4 characters வேண்டும்', 'error'); return; }
+  var users = AUTH.getUsers();
+  if (users[idx]) {
+    users[idx].username = uname;
+    users[idx].password = newPwd;
+    AUTH.saveUsers(users);
+    // Also update login dropdown
+    populateLoginDropdown();
+    showToast(users[idx].name + ' password updated!', 'success');
+    document.getElementById('pwd-edit-card').style.display = 'none';
+    showMasterDetail('password'); // refresh
+  }
+}
+
+function syncCCUsers() {
+  var existing = AUTH.getUsers();
+  var centers = MasterDB.getCCCenters();
+  // Remove old CC users
+  var dairyUsers = existing.filter(function(u) { return u.role === 'dairy'; });
+  // Add CC users from centers
+  centers.forEach(function(cc) {
+    var found = existing.find(function(u) { return u.id === cc.id; });
+    dairyUsers.push(found || {
+      id: cc.id, role: 'cc', name: cc.name,
+      username: cc.id, password: 'cc123', canEdit: true,
+    });
+  });
+  AUTH.saveUsers(dairyUsers);
+  populateLoginDropdown();
+  showToast('CC users synced! ' + centers.length + ' CCs', 'success');
+  showMasterDetail('password');
+}
+
 // ==================== MOBILE APP v2 — Edit/Delete + Search Select + Themes ====================
 
 var currentRole = null;
@@ -1614,37 +1784,42 @@ function vehicleOptions(){
 }
 
 function populateLoginDropdown(){
-  var sel=document.getElementById('lt');
-  if(!sel) return;
-  while(sel.options.length>1) sel.remove(1);
-  getCCList().forEach(function(cc){
-    var o=document.createElement('option'); o.value=cc.id; o.textContent='🏪 '+cc.name; sel.appendChild(o);
-  });
+  // Login is now username+password — no dropdown needed
+  // Just ensure the login hint is correct
+  var hint=document.getElementById('login-hint');
+  if(hint) hint.textContent='Username மற்றும் Password உள்ளிடுங்கள்';
 }
 
-function updateLoginHint(){
-  var t=document.getElementById('lt').value, hint=document.getElementById('login-hint');
-  if(!hint) return;
-  if(t==='dairy') hint.textContent='Main Dairy: Vendors, CC allocation, reports & balance';
-  else{ var cc=getCCList().find(function(c){return c.id===t;}); hint.textContent=cc?cc.name+': Feed receipt & society issue':''; }
-}
+function updateLoginHint(){}
 
 function doLogin(){
-  var lt=document.getElementById('lt').value, uname=(document.getElementById('uname').value||'').trim();
+  var uname=(document.getElementById('uname').value||'').trim();
+  var pwd=(document.getElementById('upwd').value||'');
   if(!uname){showToast('Username உள்ளிடவும்','error');return;}
-  currentRole=lt;
+  if(!pwd){showToast('Password உள்ளிடவும்','error');return;}
+  var result=AUTH.login(uname,pwd);
+  if(!result.ok){showToast(result.error,'error');
+    document.getElementById('upwd').value='';
+    document.getElementById('upwd').style.borderColor='var(--red)';
+    setTimeout(function(){document.getElementById('upwd').style.borderColor='';},1500);
+    return;
+  }
+  var user=result.user;
+  AUTH.currentUser=user;
+  currentRole=user.id;
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').classList.add('active');
-  var label=lt==='dairy'?'Main Dairy':(getCCList().find(function(c){return c.id===lt;})||{}).name||lt;
-  document.getElementById('role-badge').textContent=label;
-  document.getElementById('user-avatar').textContent=uname[0].toUpperCase();
-  buildNav(lt);
+  document.getElementById('role-badge').textContent=user.name;
+  document.getElementById('user-avatar').textContent=user.name[0].toUpperCase();
+  buildNav(user.role==='dairy'?'dairy':user.id);
 }
 
 function doLogout(){
-  currentRole=null; _editState={};
+  currentRole=null; _editState={}; AUTH.currentUser=null;
   document.getElementById('app').classList.remove('active');
   document.getElementById('login-screen').style.display='flex';
+  document.getElementById('uname').value='';
+  document.getElementById('upwd').value='';
   populateLoginDropdown();
 }
 
@@ -1866,6 +2041,7 @@ PAGES['d-masters'] = function(){
     {key:'driver',  icon:'👤',label:'Driver',     count:MasterDB.getDrivers().length},
     {key:'feedtype',icon:'🌾',label:'Feed Types', count:MasterDB.getFeedTypes().length},
     {key:'cc',      icon:'🏪',label:'CC Centers', count:MasterDB.getCCCenters().length},
+    {key:'password',icon:'🔑',label:'Passwords',  count:AUTH.getUsers().length},
   ];
   return '<div class="page-title"><span class="pt-icon">🗂️</span>Masters</div>'
     +'<div class="master-grid">'+tiles.map(function(t){
@@ -1877,8 +2053,10 @@ PAGES['d-masters'] = function(){
 
 function showMasterDetail(key){
   var ma=document.getElementById('main-area');
-  var fn={vendor:renderVendorMaster,society:renderSocietyMaster,vehicle:renderVehicleMaster,driver:renderDriverMaster,feedtype:renderFeedTypeMaster,cc:renderCCMaster};
-  if(fn[key]){ ma.innerHTML=fn[key](); ma.scrollTop=0; }
+  var fn={vendor:renderVendorMaster,society:renderSocietyMaster,vehicle:renderVehicleMaster,driver:renderDriverMaster,feedtype:renderFeedTypeMaster,cc:renderCCMaster,password:renderPasswordManager};
+  if(fn[key]){ ma.innerHTML=fn[key](); ma.scrollTop=0;
+    setTimeout(function(){document.querySelectorAll('[data-ss-id]').forEach(function(el){var id=el.dataset.ssId;var opts=window['_ssOpts_'+id];if(opts)initSS(id,opts);});},50);
+  }
 }
 
 // ---- CC PAGES ----
@@ -2109,17 +2287,13 @@ function startApp(){
   if(saved){ SCRIPT_URL=saved; connectSheets(); }
   else{ document.getElementById('loader').style.display='none'; showSetup(); }
 }
-function showSetup(){
-  document.getElementById('setup-screen').style.display='flex';
-}
+function showSetup(){ document.getElementById('setup-screen').style.display='flex'; }
 function saveScriptUrl(){
   var url=document.getElementById('setup-url').value.trim();
   if(!url||!url.includes('script.google.com')){showToast('Valid Apps Script URL paste செய்யுங்கள்','error');return;}
   SCRIPT_URL=url; localStorage.setItem('gkd_script_url',url); connectSheets();
 }
-function useOfflineMode(){
-  localStorage.setItem('gkd_use_local','1'); activateLocalMode();
-}
+function useOfflineMode(){ localStorage.setItem('gkd_use_local','1'); activateLocalMode(); }
 function activateLocalMode(){
   SHEETS_READY=true;
   DB._get=function(key){try{return JSON.parse(localStorage.getItem('gkd_'+key)||'null');}catch(e){return null;}};
@@ -2147,8 +2321,6 @@ function activateLocalMode(){
   document.getElementById('setup-screen').style.display='none';
   document.getElementById('loader').style.display='none';
   document.getElementById('login-screen').style.display='flex';
-  populateLoginDropdown();
-  showToast('Offline mode','info');
 }
 function connectSheets(){
   document.getElementById('setup-screen').style.display='none';
@@ -2157,14 +2329,13 @@ function connectSheets(){
     function(){
       loader.style.display='none';
       document.getElementById('login-screen').style.display='flex';
-      populateLoginDropdown();
       showToast('Google Sheets connected!','success');
     },
     function(err){
       loader.style.display='none';
       localStorage.removeItem('gkd_script_url');
       document.getElementById('setup-screen').style.display='flex';
-      showToast('Connection failed. URL check செய்யுங்கள்','error');
+      showToast('Connection failed','error');
     }
   );
 }
@@ -2177,6 +2348,7 @@ function clearAllData(){
   showToast('Data cleared!','success');
   setTimeout(function(){doLogout();},500);
 }
+function refreshCurrentPage(){ if(currentPage&&currentRole) showPage(currentPage); }
 window.addEventListener('DOMContentLoaded',function(){
   applyTheme(localStorage.getItem('gkd_theme')||'navy');
   if(localStorage.getItem('gkd_use_local')){ activateLocalMode(); return; }
