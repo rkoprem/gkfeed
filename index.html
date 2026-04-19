@@ -598,33 +598,52 @@ var DB = {
 
   // --- Legacy shims for _get/_set (masters.js uses these) ---
   _get: function(key) {
-    var map = {
+    var cacheMap = {
       'vendors':_cache.Vendors, 'purchases':_cache.Purchases,
       'cc_allotments':_cache.CC_Allotments, 'societies':_cache.Societies,
       'vehicles':_cache.Vehicles, 'feed_types':_cache.Feed_Types,
       'drivers':_cache.Drivers, 'cc_centers':_cache.CC_Centers,
     };
-    return map[key] !== undefined ? map[key] : null;
+    if (cacheMap[key] !== undefined) {
+      // If cache has data, return it
+      if (Array.isArray(cacheMap[key]) && cacheMap[key].length > 0) return cacheMap[key];
+      // If cache empty, try localStorage
+      try {
+        var ls = localStorage.getItem('gkd_'+key);
+        if (ls) {
+          var parsed = JSON.parse(ls);
+          // Sync back to cache
+          var syncMap = {'vendors':'Vendors','purchases':'Purchases','cc_allotments':'CC_Allotments','societies':'Societies','vehicles':'Vehicles','feed_types':'Feed_Types','drivers':'Drivers','cc_centers':'CC_Centers'};
+          if (syncMap[key]) _cache[syncMap[key]] = parsed;
+          return parsed;
+        }
+      } catch(e){}
+      return cacheMap[key];
+    }
+    // For non-cache keys, try localStorage directly
+    try { var v=localStorage.getItem('gkd_'+key); return v?JSON.parse(v):null; } catch(e){ return null; }
   },
   _set: function(key, val) {
-    var sheetMap = {
-      'vendors':'Vendors', 'purchases':'Purchases',
-      'cc_allotments':'CC_Allotments', 'societies':'Societies',
-      'vehicles':'Vehicles', 'feed_types':'Feed_Types',
-      'drivers':'Drivers', 'cc_centers':'CC_Centers',
-    };
     var cacheMap = {
       'vendors':'Vendors', 'purchases':'Purchases',
       'cc_allotments':'CC_Allotments', 'societies':'Societies',
       'vehicles':'Vehicles', 'feed_types':'Feed_Types',
       'drivers':'Drivers', 'cc_centers':'CC_Centers',
     };
+    // 1. Always update in-memory cache
     if (cacheMap[key]) _cache[cacheMap[key]] = val;
-    // Sync individual changed records to Sheets is handled by each master save function
-    // For bulk operations from masters.js, we sync the full array:
-    if (sheetMap[key]) {
-      // Clear + re-add is expensive; for masters edits we use update/delete endpoints
-      // This _set is called by masters after manual edits — sync will happen via dedicated endpoints
+
+    // 2. Persist to localStorage (works for both offline + online modes)
+    try { localStorage.setItem('gkd_'+key, JSON.stringify(val)); } catch(e){}
+
+    // 3. If online (Sheets mode), do a full bulk-replace via clearAll + re-add
+    if (SHEETS_READY && SCRIPT_URL && cacheMap[key]) {
+      var sheetName = cacheMap[key];
+      // Clear sheet rows then re-add all
+      sheetsPost('clearSheet', {sheet: sheetName}).then(function(){
+        if (!Array.isArray(val)) return;
+        val.forEach(function(row){ sheetsPost('addRow', {sheet: sheetName, data: row}); });
+      }).catch(function(){});
     }
   },
 };
@@ -2294,39 +2313,150 @@ function saveScriptUrl(){
   SCRIPT_URL=url; localStorage.setItem('gkd_script_url',url); connectSheets();
 }
 function useOfflineMode(){ localStorage.setItem('gkd_use_local','1'); activateLocalMode(); }
+
+function _loadCacheFromLS(){
+  // Load ALL master data from localStorage into _cache
+  var keys=[
+    ['vendors','Vendors'],['purchases','Purchases'],['cc_allotments','CC_Allotments'],
+    ['societies','Societies'],['vehicles','Vehicles'],['feed_types','Feed_Types'],
+    ['drivers','Drivers'],['cc_centers','CC_Centers'],
+  ];
+  keys.forEach(function(pair){
+    try{
+      var v=localStorage.getItem('gkd_'+pair[0]);
+      if(v){ var parsed=JSON.parse(v); if(Array.isArray(parsed)) _cache[pair[1]]=parsed; }
+    }catch(e){}
+  });
+  // Settings
+  _cache.Settings={dairy_balance:localStorage.getItem('gkd_dairy_balance')||'0'};
+  try{
+    var as=JSON.parse(localStorage.getItem('gkd_alert_settings')||'{}');
+    if(as.lowStock) _cache.Settings.lowStock=String(as.lowStock);
+    if(as.warnStock) _cache.Settings.warnStock=String(as.warnStock);
+  }catch(e){}
+  // CC_Receipts, CC_Issues, Vehicle_Logs — load by CC
+  ['cc_receipts','cc_issues','vehicle_logs'].forEach(function(k){
+    try{
+      var v=localStorage.getItem('gkd_'+k);
+      if(v){
+        var d=JSON.parse(v);
+        var cKey={'cc_receipts':'CC_Receipts','cc_issues':'CC_Issues','vehicle_logs':'Vehicle_Logs'}[k];
+        if(cKey) _cache[cKey]=d;
+      }
+    }catch(e){}
+  });
+}
+
 function activateLocalMode(){
   SHEETS_READY=true;
-  DB._get=function(key){try{return JSON.parse(localStorage.getItem('gkd_'+key)||'null');}catch(e){return null;}};
-  DB._set=function(key,val){localStorage.setItem('gkd_'+key,JSON.stringify(val));};
-  DB.clearAll=function(){Object.keys(localStorage).filter(function(k){return k.startsWith('gkd_');}).forEach(function(k){localStorage.removeItem(k);});};
-  var arrKeys=['vendors','purchases','cc_allotments','societies','vehicles','feed_types','drivers','cc_centers'];
-  arrKeys.forEach(function(k){if(!localStorage.getItem('gkd_'+k))localStorage.setItem('gkd_'+k,'[]');});
-  var objKeys=['cc_receipts','cc_issues','vehicle_logs'];
-  objKeys.forEach(function(k){if(!localStorage.getItem('gkd_'+k))localStorage.setItem('gkd_'+k,JSON.stringify({cc1:[],cc2:[],cc3:[],cc4:[],cc5:[]}));});
-  if(!localStorage.getItem('gkd_dairy_balance'))localStorage.setItem('gkd_dairy_balance','0');
-  if(!localStorage.getItem('gkd_alert_settings'))localStorage.setItem('gkd_alert_settings',JSON.stringify({lowStock:15,warnStock:25,phone:'',via:'SMS'}));
-  _cache.Vendors=DB._get('vendors')||[];
-  _cache.Purchases=DB._get('purchases')||[];
-  _cache.CC_Allotments=DB._get('cc_allotments')||[];
-  _cache.Societies=DB._get('societies')||[];
-  _cache.Vehicles=DB._get('vehicles')||[];
-  _cache.Feed_Types=DB._get('feed_types')||[];
-  _cache.Drivers=DB._get('drivers')||[];
-  _cache.CC_Centers=DB._get('cc_centers')||[];
-  _cache.CC_Receipts=[];_cache.CC_Issues=[];_cache.Vehicle_Logs=[];
-  _cache.Settings={dairy_balance:localStorage.getItem('gkd_dairy_balance')||'0'};
-  var as=DB._get('alert_settings')||{};
-  if(as.lowStock)_cache.Settings.lowStock=String(as.lowStock);
-  if(as.warnStock)_cache.Settings.warnStock=String(as.warnStock);
+
+  // Override DB methods to use localStorage directly
+  DB._get=function(key){
+    // First check cache
+    var cacheMap={'vendors':'Vendors','purchases':'Purchases','cc_allotments':'CC_Allotments','societies':'Societies','vehicles':'Vehicles','feed_types':'Feed_Types','drivers':'Drivers','cc_centers':'CC_Centers'};
+    if(cacheMap[key]&&_cache[cacheMap[key]]&&(_cache[cacheMap[key]].length>0||true)){
+      // Sync from LS if cache empty
+      if(_cache[cacheMap[key]].length===0){
+        try{var v=localStorage.getItem('gkd_'+key);if(v)_cache[cacheMap[key]]=JSON.parse(v);}catch(e){}
+      }
+      return _cache[cacheMap[key]];
+    }
+    try{var v2=localStorage.getItem('gkd_'+key);return v2?JSON.parse(v2):null;}catch(e){return null;}
+  };
+  DB._set=function(key,val){
+    var cacheMap={'vendors':'Vendors','purchases':'Purchases','cc_allotments':'CC_Allotments','societies':'Societies','vehicles':'Vehicles','feed_types':'Feed_Types','drivers':'Drivers','cc_centers':'CC_Centers'};
+    if(cacheMap[key]) _cache[cacheMap[key]]=val;
+    try{localStorage.setItem('gkd_'+key,JSON.stringify(val));}catch(e){}
+  };
+  DB.clearAll=function(){
+    Object.keys(localStorage).filter(function(k){return k.startsWith('gkd_');}).forEach(function(k){localStorage.removeItem(k);});
+    Object.keys(_cache).forEach(function(k){_cache[k]=Array.isArray(_cache[k])?[]:{};});
+  };
+  DB.getDairyBalance=function(){
+    var v=parseFloat(localStorage.getItem('gkd_dairy_balance')||_cache.Settings.dairy_balance||'0');
+    return isNaN(v)?0:v;
+  };
+  DB.setDairyBalance=function(v){ localStorage.setItem('gkd_dairy_balance',String(v)); _cache.Settings.dairy_balance=String(v); };
+  DB.getAlertSettings=function(){
+    try{var v=localStorage.getItem('gkd_alert_settings');if(v){var s=JSON.parse(v);return{lowStock:s.lowStock||15,warnStock:s.warnStock||25,phone:s.phone||'',via:s.via||'SMS'};}}catch(e){}
+    return{lowStock:15,warnStock:25,phone:'',via:'SMS'};
+  };
+  DB.saveAlertSettings=function(cfg){localStorage.setItem('gkd_alert_settings',JSON.stringify(cfg));};
+
+  // CC Receipts/Issues/Logs — localStorage object per CC
+  DB.getCCReceipts=function(cc){
+    try{var v=localStorage.getItem('gkd_cc_receipts');if(v){var d=JSON.parse(v);return(d[cc]||[]).map(function(r){return Object.assign({},r,{received:parseFloat(r.received)||0,damage:parseFloat(r.damage)||0,net:parseFloat(r.net)||0,rate:parseFloat(r.rate)||0});});}}catch(e){}
+    return[];
+  };
+  DB.addCCReceipt=function(cc,r){
+    var d={};try{var v=localStorage.getItem('gkd_cc_receipts');if(v)d=JSON.parse(v);}catch(e){}
+    if(!d[cc])d[cc]=[];r.id='r'+Date.now();d[cc].unshift(r);
+    localStorage.setItem('gkd_cc_receipts',JSON.stringify(d));return r;
+  };
+  DB.getCCIssues=function(cc){
+    try{var v=localStorage.getItem('gkd_cc_issues');if(v){var d=JSON.parse(v);return(d[cc]||[]).map(function(i){return Object.assign({},i,{qty:parseFloat(i.qty)||0,rate:parseFloat(i.rate)||0,opening:parseFloat(i.opening)||0,closing:parseFloat(i.closing)||0});});}}catch(e){}
+    return[];
+  };
+  DB.addCCIssue=function(cc,issue){
+    var d={};try{var v=localStorage.getItem('gkd_cc_issues');if(v)d=JSON.parse(v);}catch(e){}
+    if(!d[cc])d[cc]=[];issue.id='i'+Date.now();d[cc].unshift(issue);
+    localStorage.setItem('gkd_cc_issues',JSON.stringify(d));return issue;
+  };
+  DB.getVehicleLogs=function(cc){
+    try{var v=localStorage.getItem('gkd_vehicle_logs');if(v){var d=JSON.parse(v);return d[cc]||[];}}catch(e){}return[];
+  };
+  DB.addVehicleLog=function(cc,log){
+    var d={};try{var v=localStorage.getItem('gkd_vehicle_logs');if(v)d=JSON.parse(v);}catch(e){}
+    if(!d[cc])d[cc]=[];log.id='vl'+Date.now();d[cc].unshift(log);
+    localStorage.setItem('gkd_vehicle_logs',JSON.stringify(d));return log;
+  };
+  DB.getCCStock=function(cc){
+    var r=DB.getCCReceipts(cc).reduce(function(s,x){return s+(parseFloat(x.net)||0);},0);
+    var i=DB.getCCIssues(cc).reduce(function(s,x){return s+(parseFloat(x.qty)||0);},0);
+    return Math.max(0,r-i);
+  };
+  DB.getCCBalance=function(cc){
+    var recv=DB.getAllotmentsByCC(cc).reduce(function(s,x){return s+(parseFloat(x.total)||0);},0);
+    var iss=DB.getCCIssues(cc).reduce(function(s,x){return s+(parseFloat(x.qty)||0)*(parseFloat(x.rate)||0);},0);
+    return Math.max(0,recv-iss);
+  };
+
+  // Purchases add — update balance
+  var _origAddPurchase=DB.addPurchase;
+  DB.addPurchase=function(p){
+    p.id='p'+Date.now();
+    var list=DB.getPurchases(); list.unshift(p);
+    DB._set('purchases',list);
+    var bal=DB.getDairyBalance(); DB.setDairyBalance(bal-(parseFloat(p.total)||0));
+    return p;
+  };
+
+  // Init empty arrays if not exist
+  ['vendors','purchases','cc_allotments','societies','vehicles','feed_types','drivers','cc_centers'].forEach(function(k){
+    if(!localStorage.getItem('gkd_'+k)) localStorage.setItem('gkd_'+k,'[]');
+  });
+  ['cc_receipts','cc_issues','vehicle_logs'].forEach(function(k){
+    if(!localStorage.getItem('gkd_'+k)) localStorage.setItem('gkd_'+k,'{}');
+  });
+  if(!localStorage.getItem('gkd_dairy_balance')) localStorage.setItem('gkd_dairy_balance','0');
+  if(!localStorage.getItem('gkd_alert_settings')) localStorage.setItem('gkd_alert_settings',JSON.stringify({lowStock:15,warnStock:25,phone:'',via:'SMS'}));
+
+  // Load all data into cache from localStorage
+  _loadCacheFromLS();
+
   document.getElementById('setup-screen').style.display='none';
   document.getElementById('loader').style.display='none';
   document.getElementById('login-screen').style.display='flex';
+  showToast('Offline mode — data device-ல் save ஆகும்','info');
 }
+
 function connectSheets(){
   document.getElementById('setup-screen').style.display='none';
   var loader=document.getElementById('loader'); loader.style.display='flex';
   sheetsInit(
     function(){
+      // After Sheets load, also sync localStorage for offline fallback
+      _loadCacheFromLS();
       loader.style.display='none';
       document.getElementById('login-screen').style.display='flex';
       showToast('Google Sheets connected!','success');
@@ -2334,16 +2464,18 @@ function connectSheets(){
     function(err){
       loader.style.display='none';
       localStorage.removeItem('gkd_script_url');
+      // Fallback to offline mode with existing localStorage data
       document.getElementById('setup-screen').style.display='flex';
-      showToast('Connection failed','error');
+      showToast('Connection failed. Offline mode use செய்யுங்கள்','error');
     }
   );
 }
 function reconfigureSheets(){ localStorage.removeItem('gkd_script_url'); localStorage.removeItem('gkd_use_local'); location.reload(); }
 function clearAllData(){
   if(!confirm('எல்லா data-வும் delete ஆகும்?')) return;
-  if(!confirm('Sure?')) return;
+  if(!confirm('Sure? Masters data-உம் போகும்!')) return;
   DB.clearAll();
+  Object.keys(localStorage).filter(function(k){return k.startsWith('gkd_');}).forEach(function(k){localStorage.removeItem(k);});
   Object.keys(_cache).forEach(function(k){_cache[k]=Array.isArray(_cache[k])?[]:{};});
   showToast('Data cleared!','success');
   setTimeout(function(){doLogout();},500);
