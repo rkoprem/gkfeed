@@ -375,215 +375,264 @@ tr:hover td{background:rgba(212,168,67,.04)}
 
 
 
-<script>// ==================== GOOGLE SHEETS DB LAYER ====================
-// All data reads/writes go to Google Sheets via Apps Script Web App URL
+<script>// ==================== GK DAIRY — DATA LAYER ====================
+// localStorage = primary storage (always works, offline/online)
+// Google Sheets = optional cloud sync (when URL configured)
 
-var SCRIPT_URL = ''; // உங்கள் Web App URL இங்கே வரும்
-
-// In-memory cache — loaded once, updated on each write
-var _cache = {
-  Vendors:       [],
-  Purchases:     [],
-  CC_Allotments: [],
-  CC_Receipts:   [],
-  CC_Issues:     [],
-  Societies:     [],
-  Vehicles:      [],
-  Vehicle_Logs:  [],
-  Feed_Types:    [],
-  Drivers:       [],
-  CC_Centers:    [],
-  Settings:      {},
-};
-
+var SCRIPT_URL = '';
 var SHEETS_READY = false;
 
-// ---- HTTP helpers ----
-function sheetsGet(action, params) {
-  params = params || {};
-  params.action = action;
-  var qs = Object.keys(params).map(function(k){ return k+'='+encodeURIComponent(params[k]); }).join('&');
-  return fetch(SCRIPT_URL + '?' + qs).then(function(r){ return r.json(); });
+// ---- localStorage helpers ----
+function lsGet(key) {
+  try { var v = localStorage.getItem('gkd_' + key); return v ? JSON.parse(v) : null; } catch(e) { return null; }
+}
+function lsSet(key, val) {
+  try { localStorage.setItem('gkd_' + key, JSON.stringify(val)); } catch(e) {}
 }
 
+// ---- Sheets POST (fire-and-forget, non-blocking) ----
 function sheetsPost(action, data) {
+  if (!SCRIPT_URL) return Promise.resolve({ok:true});
   data.action = action;
   return fetch(SCRIPT_URL, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(data),
     mode: 'cors',
-  }).then(function(r){ return r.json(); });
+  }).then(function(r) { return r.json(); }).catch(function() { return {ok:false}; });
 }
 
-// ---- Load all data at startup ----
+function sheetsGet(action, params) {
+  if (!SCRIPT_URL) return Promise.resolve({ok:false});
+  params = params || {};
+  params.action = action;
+  var qs = Object.keys(params).map(function(k){ return k+'='+encodeURIComponent(params[k]); }).join('&');
+  return fetch(SCRIPT_URL + '?' + qs)
+    .then(function(r){ return r.json(); })
+    .catch(function(){ return {ok:false}; });
+}
+
+// ---- Sheets init: load from Sheets into localStorage ----
 function sheetsInit(onReady, onError) {
   if (!SCRIPT_URL) { if(onError) onError('No URL'); return; }
   sheetsGet('getAll').then(function(res) {
-    if (!res.ok) throw new Error(res.error || 'Load failed');
-    var d = res.data;
-    _cache.Vendors       = d.Vendors       || [];
-    _cache.Purchases     = d.Purchases     || [];
-    _cache.CC_Allotments = d.CC_Allotments || [];
-    _cache.CC_Receipts   = d.CC_Receipts   || [];
-    _cache.CC_Issues     = d.CC_Issues     || [];
-    _cache.Societies     = d.Societies     || [];
-    _cache.Vehicles      = d.Vehicles      || [];
-    _cache.Vehicle_Logs  = d.Vehicle_Logs  || [];
-    _cache.Feed_Types    = d.Feed_Types    || [];
-    _cache.Drivers       = d.Drivers       || [];
-    _cache.CC_Centers    = d.CC_Centers    || [];
-    _cache.Settings      = d.Settings      || {};
+    if (!res.ok) { if(onError) onError(res.error||'Load failed'); return; }
+    var d = res.data || {};
+    // Write Sheets data to localStorage (Sheets is source of truth on first load)
+    var sheetToLS = {
+      'Vendors':'vendors','Purchases':'purchases','CC_Allotments':'cc_allotments',
+      'Societies':'societies','Vehicles':'vehicles','Feed_Types':'feed_types',
+      'Drivers':'drivers','CC_Centers':'cc_centers',
+    };
+    Object.keys(sheetToLS).forEach(function(sheet) {
+      var lsKey = sheetToLS[sheet];
+      if (d[sheet] && Array.isArray(d[sheet])) lsSet(lsKey, d[sheet]);
+    });
+    // Settings
+    if (d.Settings) {
+      var s = d.Settings;
+      if (s.dairy_balance) lsSet('dairy_balance', s.dairy_balance);
+      if (s.lowStock || s.warnStock) {
+        lsSet('alert_settings', {
+          lowStock: parseFloat(s.lowStock)||15,
+          warnStock: parseFloat(s.warnStock)||25,
+          phone: s.alert_phone||'', via: s.alert_via||'SMS'
+        });
+      }
+    }
     SHEETS_READY = true;
     if (onReady) onReady();
   }).catch(function(e) {
-    if (onError) onError(e.message || e);
+    if (onError) onError(e.message||'Error');
   });
 }
 
-// ---- Helper: parse numbers from sheet strings ----
-function num(v) { return parseFloat(v) || 0; }
+// ==================== DB OBJECT ====================
+// All operations: localStorage first, then fire-and-forget to Sheets
 
-// ==================== DB OBJECT (Sheets-backed) ====================
 var DB = {
 
   // --- Vendors ---
-  getVendors: function() { return _cache.Vendors; },
+  getVendors: function() { return lsGet('vendors') || []; },
   addVendor: function(v) {
-    v.id = 'v'+Date.now();
-    _cache.Vendors.push(v);
-    sheetsPost('addVendor', {data: v});
+    v.id = 'v' + Date.now();
+    var list = this.getVendors(); list.push(v); lsSet('vendors', list);
+    sheetsPost('addVendor', {data:v});
     return v;
+  },
+  updateVendor: function(id, data) {
+    var list = this.getVendors(), i = list.findIndex(function(x){return x.id===id;});
+    if(i>=0){ list[i]=Object.assign(list[i],data); lsSet('vendors',list); sheetsPost('updateVendor',{id:id,data:data}); }
+  },
+  deleteVendor: function(id) {
+    var list = this.getVendors().filter(function(x){return x.id!==id;});
+    lsSet('vendors',list); sheetsPost('deleteVendor',{id:id});
   },
 
   // --- Purchases ---
   getPurchases: function() {
-    return _cache.Purchases.map(function(p){
-      return Object.assign({}, p, {qty:num(p.qty), rate:num(p.rate), total:num(p.total)});
+    return (lsGet('purchases')||[]).map(function(p){
+      return Object.assign({},p,{qty:parseFloat(p.qty)||0,rate:parseFloat(p.rate)||0,total:parseFloat(p.total)||0});
     });
   },
   addPurchase: function(p) {
-    p.id = 'p'+Date.now();
-    _cache.Purchases.unshift(p);
-    var bal = num(_cache.Settings['dairy_balance'] || 0);
-    _cache.Settings['dairy_balance'] = String(bal - num(p.total));
-    sheetsPost('addPurchase', {data: p});
+    p.id = 'p' + Date.now();
+    var list = lsGet('purchases')||[]; list.unshift(p); lsSet('purchases',list);
+    var bal = this.getDairyBalance(); this.setDairyBalance(bal - (parseFloat(p.total)||0));
+    sheetsPost('addPurchase',{data:p});
     return p;
+  },
+  deletePurchase: function(id) {
+    var list = (lsGet('purchases')||[]).filter(function(x){return x.id!==id;});
+    lsSet('purchases',list); sheetsPost('deletePurchase',{id:id});
   },
 
   // --- CC Allotments ---
   getAllotments: function() {
-    return _cache.CC_Allotments.map(function(a){
-      return Object.assign({}, a, {qty:num(a.qty), rate:num(a.rate), total:num(a.total)});
+    return (lsGet('cc_allotments')||[]).map(function(a){
+      return Object.assign({},a,{qty:parseFloat(a.qty)||0,rate:parseFloat(a.rate)||0,total:parseFloat(a.total)||0});
     });
   },
   addAllotment: function(a) {
-    a.id = 'a'+Date.now();
-    _cache.CC_Allotments.unshift(a);
-    sheetsPost('addAllotment', {data: a});
+    a.id = 'a' + Date.now();
+    var list = lsGet('cc_allotments')||[]; list.unshift(a); lsSet('cc_allotments',list);
+    sheetsPost('addAllotment',{data:a});
     return a;
   },
+  deleteAllotment: function(id) {
+    var list = (lsGet('cc_allotments')||[]).filter(function(x){return x.id!==id;});
+    lsSet('cc_allotments',list); sheetsPost('deleteAllotment',{id:id});
+  },
   getAllotmentsByCC: function(cc) {
-    return this.getAllotments().filter(function(a){ return a.cc === cc; });
+    return this.getAllotments().filter(function(a){return a.cc===cc;});
   },
 
   // --- CC Receipts ---
   getCCReceipts: function(cc) {
-    return _cache.CC_Receipts.filter(function(r){ return r.cc === cc; }).map(function(r){
-      return Object.assign({}, r, {received:num(r.received), damage:num(r.damage), net:num(r.net), rate:num(r.rate)});
+    var d = lsGet('cc_receipts') || {};
+    return (d[cc]||[]).map(function(r){
+      return Object.assign({},r,{received:parseFloat(r.received)||0,damage:parseFloat(r.damage)||0,net:parseFloat(r.net)||0,rate:parseFloat(r.rate)||0});
     });
   },
   addCCReceipt: function(cc, r) {
-    r.id = 'r'+Date.now();
-    r.cc = cc;
-    _cache.CC_Receipts.unshift(r);
-    sheetsPost('addCCReceipt', {data: r});
+    r.id = 'r' + Date.now(); r.cc = cc;
+    var d = lsGet('cc_receipts') || {};
+    if(!d[cc]) d[cc]=[];
+    d[cc].unshift(r); lsSet('cc_receipts',d);
+    sheetsPost('addCCReceipt',{data:r});
     return r;
+  },
+  deleteCCReceipt: function(cc, id) {
+    var d = lsGet('cc_receipts')||{};
+    if(d[cc]) d[cc]=d[cc].filter(function(x){return x.id!==id;});
+    lsSet('cc_receipts',d); sheetsPost('deleteCCReceipt',{id:id});
   },
 
   // --- CC Issues ---
   getCCIssues: function(cc) {
-    return _cache.CC_Issues.filter(function(i){ return i.cc === cc; }).map(function(i){
-      return Object.assign({}, i, {qty:num(i.qty), rate:num(i.rate), opening:num(i.opening), closing:num(i.closing)});
+    var d = lsGet('cc_issues') || {};
+    return (d[cc]||[]).map(function(i){
+      return Object.assign({},i,{qty:parseFloat(i.qty)||0,rate:parseFloat(i.rate)||0,opening:parseFloat(i.opening)||0,closing:parseFloat(i.closing)||0});
     });
   },
   addCCIssue: function(cc, issue) {
-    issue.id = 'i'+Date.now();
-    issue.cc = cc;
-    _cache.CC_Issues.unshift(issue);
-    sheetsPost('addCCIssue', {data: issue});
+    issue.id = 'i' + Date.now(); issue.cc = cc;
+    var d = lsGet('cc_issues')||{};
+    if(!d[cc]) d[cc]=[];
+    d[cc].unshift(issue); lsSet('cc_issues',d);
+    sheetsPost('addCCIssue',{data:issue});
     return issue;
+  },
+  deleteCCIssue: function(cc, id) {
+    var d = lsGet('cc_issues')||{};
+    if(d[cc]) d[cc]=d[cc].filter(function(x){return x.id!==id;});
+    lsSet('cc_issues',d); sheetsPost('deleteCCIssue',{id:id});
   },
 
   // --- Societies ---
   getSocieties: function(cc) {
-    var s = _cache.Societies;
-    return cc ? s.filter(function(x){ return x.cc === cc; }) : s;
+    var s = lsGet('societies')||[];
+    return cc ? s.filter(function(x){return x.cc===cc;}) : s;
   },
   addSociety: function(s) {
-    s.id = 's'+Date.now();
-    _cache.Societies.push(s);
-    sheetsPost('addSociety', {data: s});
+    s.id = 's' + Date.now();
+    var list = lsGet('societies')||[]; list.push(s); lsSet('societies',list);
+    sheetsPost('addSociety',{data:s});
     return s;
+  },
+  updateSociety: function(id,data) {
+    var list=lsGet('societies')||[], i=list.findIndex(function(x){return x.id===id;});
+    if(i>=0){ list[i]=Object.assign(list[i],data); lsSet('societies',list); sheetsPost('updateSociety',{id:id,data:data}); }
+  },
+  deleteSociety: function(id) {
+    var list=(lsGet('societies')||[]).filter(function(x){return x.id!==id;});
+    lsSet('societies',list); sheetsPost('deleteSociety',{id:id});
   },
 
   // --- Vehicles ---
-  getVehicles: function() { return _cache.Vehicles; },
+  getVehicles: function() { return lsGet('vehicles')||[]; },
+  addVehicle: function(v) {
+    v.id = 'veh'+Date.now();
+    var list=this.getVehicles(); list.push(v); lsSet('vehicles',list);
+    sheetsPost('addVehicle',{data:v});
+    return v;
+  },
+  updateVehicle: function(id,data) {
+    var list=this.getVehicles(), i=list.findIndex(function(x){return x.id===id;});
+    if(i>=0){ list[i]=Object.assign(list[i],data); lsSet('vehicles',list); sheetsPost('updateVehicle',{id:id,data:data}); }
+  },
+  deleteVehicle: function(id) {
+    var list=this.getVehicles().filter(function(x){return x.id!==id;});
+    lsSet('vehicles',list); sheetsPost('deleteVehicle',{id:id});
+  },
+
+  // --- Vehicle Logs ---
   getVehicleLogs: function(cc) {
-    return _cache.Vehicle_Logs.filter(function(l){ return l.cc === cc; });
+    var d = lsGet('vehicle_logs')||{};
+    return d[cc]||[];
   },
   addVehicleLog: function(cc, log) {
-    log.id = 'vl'+Date.now();
-    log.cc = cc;
-    _cache.Vehicle_Logs.unshift(log);
-    sheetsPost('addVehicleLog', {data: log});
+    log.id = 'vl'+Date.now(); log.cc = cc;
+    var d = lsGet('vehicle_logs')||{};
+    if(!d[cc]) d[cc]=[];
+    d[cc].unshift(log); lsSet('vehicle_logs',d);
+    sheetsPost('addVehicleLog',{data:log});
     return log;
+  },
+  deleteVehicleLog: function(cc, id) {
+    var d = lsGet('vehicle_logs')||{};
+    if(d[cc]) d[cc]=d[cc].filter(function(x){return x.id!==id;});
+    lsSet('vehicle_logs',d); sheetsPost('deleteVehicleLog',{id:id});
   },
 
   // --- Balance ---
-  getDairyBalance: function() { return num(_cache.Settings['dairy_balance'] || 0); },
+  getDairyBalance: function() { return parseFloat(lsGet('dairy_balance')||0)||0; },
   setDairyBalance: function(v) {
-    _cache.Settings['dairy_balance'] = String(v);
-    sheetsPost('setSetting', {key: 'dairy_balance', value: String(v)});
+    lsSet('dairy_balance', v);
+    sheetsPost('setSetting',{key:'dairy_balance',value:String(v)});
   },
 
-  // --- CC Stock ---
+  // --- CC Stock / Balance ---
   getCCStock: function(cc) {
-    var r = this.getCCReceipts(cc).reduce(function(s,x){ return s+(x.net||0); }, 0);
-    var i = this.getCCIssues(cc).reduce(function(s,x){ return s+(x.qty||0); }, 0);
+    var r = this.getCCReceipts(cc).reduce(function(s,x){return s+x.net;},0);
+    var i = this.getCCIssues(cc).reduce(function(s,x){return s+x.qty;},0);
     return Math.max(0, r - i);
   },
   getCCBalance: function(cc) {
-    var recv = this.getAllotmentsByCC(cc).reduce(function(s,x){ return s+x.total; }, 0);
-    var iss  = this.getCCIssues(cc).reduce(function(s,x){ return s+(x.qty*x.rate); }, 0);
+    var recv = this.getAllotmentsByCC(cc).reduce(function(s,x){return s+x.total;},0);
+    var iss  = this.getCCIssues(cc).reduce(function(s,x){return s+(x.qty*x.rate);},0);
     return Math.max(0, recv - iss);
   },
 
   // --- Alert Settings ---
   getAlertSettings: function() {
-    var s = _cache.Settings;
-    return {
-      lowStock:  num(s['lowStock']  || 15),
-      warnStock: num(s['warnStock'] || 25),
-      phone:     s['alert_phone'] || '',
-      via:       s['alert_via']   || 'SMS',
-    };
+    var s = lsGet('alert_settings');
+    return s ? {lowStock:parseFloat(s.lowStock)||15,warnStock:parseFloat(s.warnStock)||25,phone:s.phone||'',via:s.via||'SMS'}
+             : {lowStock:15,warnStock:25,phone:'',via:'SMS'};
   },
   saveAlertSettings: function(cfg) {
-    _cache.Settings['lowStock']   = String(cfg.lowStock);
-    _cache.Settings['warnStock']  = String(cfg.warnStock);
-    _cache.Settings['alert_phone']= cfg.phone;
-    _cache.Settings['alert_via']  = cfg.via;
-    sheetsPost('setSetting', {key:'lowStock',    value:String(cfg.lowStock)});
-    sheetsPost('setSetting', {key:'warnStock',   value:String(cfg.warnStock)});
-    sheetsPost('setSetting', {key:'alert_phone', value:cfg.phone});
-    sheetsPost('setSetting', {key:'alert_via',   value:cfg.via});
-  },
-
-  // --- Clear all ---
-  clearAll: function() {
-    Object.keys(_cache).forEach(function(k){ _cache[k] = Array.isArray(_cache[k]) ? [] : {}; });
-    sheetsPost('clearAll', {});
+    lsSet('alert_settings',cfg);
+    sheetsPost('setSetting',{key:'alert_settings',value:JSON.stringify(cfg)});
   },
 
   // --- Date filter ---
@@ -596,81 +645,119 @@ var DB = {
     });
   },
 
-  // --- Legacy shims for _get/_set (masters.js uses these) ---
+  // --- Clear all ---
+  clearAll: function() {
+    Object.keys(localStorage).filter(function(k){return k.startsWith('gkd_');})
+      .forEach(function(k){localStorage.removeItem(k);});
+    if(SHEETS_READY && SCRIPT_URL) sheetsPost('clearAll',{});
+  },
+
+  // --- Legacy _get/_set shims (used by masters.js) ---
   _get: function(key) {
-    var cacheMap = {
-      'vendors':_cache.Vendors, 'purchases':_cache.Purchases,
-      'cc_allotments':_cache.CC_Allotments, 'societies':_cache.Societies,
-      'vehicles':_cache.Vehicles, 'feed_types':_cache.Feed_Types,
-      'drivers':_cache.Drivers, 'cc_centers':_cache.CC_Centers,
-    };
-    if (cacheMap[key] !== undefined) {
-      // If cache has data, return it
-      if (Array.isArray(cacheMap[key]) && cacheMap[key].length > 0) return cacheMap[key];
-      // If cache empty, try localStorage
-      try {
-        var ls = localStorage.getItem('gkd_'+key);
-        if (ls) {
-          var parsed = JSON.parse(ls);
-          // Sync back to cache
-          var syncMap = {'vendors':'Vendors','purchases':'Purchases','cc_allotments':'CC_Allotments','societies':'Societies','vehicles':'Vehicles','feed_types':'Feed_Types','drivers':'Drivers','cc_centers':'CC_Centers'};
-          if (syncMap[key]) _cache[syncMap[key]] = parsed;
-          return parsed;
-        }
-      } catch(e){}
-      return cacheMap[key];
-    }
-    // For non-cache keys, try localStorage directly
-    try { var v=localStorage.getItem('gkd_'+key); return v?JSON.parse(v):null; } catch(e){ return null; }
+    return lsGet(key);
   },
   _set: function(key, val) {
-    var cacheMap = {
-      'vendors':'Vendors', 'purchases':'Purchases',
-      'cc_allotments':'CC_Allotments', 'societies':'Societies',
-      'vehicles':'Vehicles', 'feed_types':'Feed_Types',
-      'drivers':'Drivers', 'cc_centers':'CC_Centers',
+    lsSet(key, val);
+    // Fire-and-forget to Sheets for supported keys
+    var sheetMap = {
+      'vendors':'Vendors','purchases':'Purchases','cc_allotments':'CC_Allotments',
+      'societies':'Societies','vehicles':'Vehicles',
     };
-    // 1. Always update in-memory cache
-    if (cacheMap[key]) _cache[cacheMap[key]] = val;
-
-    // 2. Persist to localStorage (works for both offline + online modes)
-    try { localStorage.setItem('gkd_'+key, JSON.stringify(val)); } catch(e){}
-
-    // 3. If online (Sheets mode), do a full bulk-replace via clearAll + re-add
-    if (SHEETS_READY && SCRIPT_URL && cacheMap[key]) {
-      var sheetName = cacheMap[key];
-      // Clear sheet rows then re-add all
-      sheetsPost('clearSheet', {sheet: sheetName}).then(function(){
-        if (!Array.isArray(val)) return;
-        val.forEach(function(row){ sheetsPost('addRow', {sheet: sheetName, data: row}); });
-      }).catch(function(){});
+    if(sheetMap[key] && SHEETS_READY && SCRIPT_URL) {
+      sheetsPost('bulkReplace',{sheet:sheetMap[key],rows:val});
     }
   },
 };
 
-// Override MasterDB to use Sheets endpoints
+// ==================== MASTER DB ====================
+// Feed Types, Drivers, CC Centers — all localStorage-first
+
 var MasterDB = {
-  getFeedTypes:    function(){ return _cache.Feed_Types; },
-  addFeedType:     function(ft){ ft.id='ft'+Date.now(); _cache.Feed_Types.push(ft); sheetsPost('addFeedType',{data:ft}); return ft; },
-  updateFeedType:  function(id,data){ var i=_cache.Feed_Types.findIndex(function(x){return x.id===id;}); if(i>=0) _cache.Feed_Types[i]=Object.assign(_cache.Feed_Types[i],data); sheetsPost('updateFeedType',{id:id,data:data}); },
-  deleteFeedType:  function(id){ _cache.Feed_Types=_cache.Feed_Types.filter(function(x){return x.id!==id;}); sheetsPost('deleteFeedType',{id:id}); },
 
-  getDrivers:      function(){ return _cache.Drivers; },
-  addDriver:       function(d){ d.id='dr'+Date.now(); _cache.Drivers.push(d); sheetsPost('addDriver',{data:d}); return d; },
-  updateDriver:    function(id,data){ var i=_cache.Drivers.findIndex(function(x){return x.id===id;}); if(i>=0) _cache.Drivers[i]=Object.assign(_cache.Drivers[i],data); sheetsPost('updateDriver',{id:id,data:data}); },
-  deleteDriver:    function(id){ _cache.Drivers=_cache.Drivers.filter(function(x){return x.id!==id;}); sheetsPost('deleteDriver',{id:id}); },
+  // --- Feed Types ---
+  getFeedTypes: function() { return lsGet('feed_types') || []; },
+  addFeedType: function(ft) {
+    ft.id = 'ft'+Date.now();
+    var list = this.getFeedTypes(); list.push(ft); lsSet('feed_types',list);
+    sheetsPost('addFeedType',{data:ft});
+    return ft;
+  },
+  updateFeedType: function(id, data) {
+    var list = this.getFeedTypes(), i = list.findIndex(function(x){return x.id===id;});
+    if(i>=0){ list[i]=Object.assign(list[i],data); lsSet('feed_types',list); sheetsPost('updateFeedType',{id:id,data:data}); }
+  },
+  deleteFeedType: function(id) {
+    var list = this.getFeedTypes().filter(function(x){return x.id!==id;});
+    lsSet('feed_types',list); sheetsPost('deleteFeedType',{id:id});
+  },
 
-  getCCCenters:    function(){ return _cache.CC_Centers; },
-  addCCCenter:     function(c){ c.id='cc_'+Date.now(); _cache.CC_Centers.push(c); sheetsPost('addCCCenter',{data:c}); return c; },
-  updateCCCenter:  function(id,data){ var i=_cache.CC_Centers.findIndex(function(x){return x.id===id;}); if(i>=0) _cache.CC_Centers[i]=Object.assign(_cache.CC_Centers[i],data); sheetsPost('updateCCCenter',{id:id,data:data}); },
-  deleteCCCenter:  function(id){ _cache.CC_Centers=_cache.CC_Centers.filter(function(x){return x.id!==id;}); sheetsPost('deleteCCCenter',{id:id}); },
+  // --- Drivers ---
+  getDrivers: function() { return lsGet('drivers') || []; },
+  addDriver: function(d) {
+    d.id = 'dr'+Date.now();
+    var list = this.getDrivers(); list.push(d); lsSet('drivers',list);
+    sheetsPost('addDriver',{data:d});
+    return d;
+  },
+  updateDriver: function(id, data) {
+    var list = this.getDrivers(), i = list.findIndex(function(x){return x.id===id;});
+    if(i>=0){ list[i]=Object.assign(list[i],data); lsSet('drivers',list); sheetsPost('updateDriver',{id:id,data:data}); }
+  },
+  deleteDriver: function(id) {
+    var list = this.getDrivers().filter(function(x){return x.id!==id;});
+    lsSet('drivers',list); sheetsPost('deleteDriver',{id:id});
+  },
 
-  // Bulk imports
-  bulkAddVendors:    function(rows){ rows.forEach(function(r){ if(r.name) DB.addVendor(r); }); return rows.length; },
-  bulkAddSocieties:  function(rows){ rows.forEach(function(r){ if(r.name&&r.cc) DB.addSociety(r); }); return rows.length; },
-  bulkAddVehicles:   function(rows){ rows.forEach(function(r){ if(r.no){ r.id='veh'+Date.now(); _cache.Vehicles.push(r); sheetsPost('addVehicle',{data:r}); } }); return rows.length; },
-  bulkAddDrivers:    function(rows){ rows.forEach(function(r){ if(r.name) MasterDB.addDriver(r); }); return rows.length; },
-  bulkAddFeedTypes:  function(rows){ rows.forEach(function(r){ if(r.name){ r.unit=r.unit||'Bag'; MasterDB.addFeedType(r); } }); return rows.length; },
+  // --- CC Centers ---
+  getCCCenters: function() { return lsGet('cc_centers') || []; },
+  addCCCenter: function(c) {
+    c.id = 'cc_'+Date.now();
+    var list = this.getCCCenters(); list.push(c); lsSet('cc_centers',list);
+    sheetsPost('addCCCenter',{data:c});
+    return c;
+  },
+  updateCCCenter: function(id, data) {
+    var list = this.getCCCenters(), i = list.findIndex(function(x){return x.id===id;});
+    if(i>=0){ list[i]=Object.assign(list[i],data); lsSet('cc_centers',list); sheetsPost('updateCCCenter',{id:id,data:data}); }
+  },
+  deleteCCCenter: function(id) {
+    var list = this.getCCCenters().filter(function(x){return x.id!==id;});
+    lsSet('cc_centers',list); sheetsPost('deleteCCCenter',{id:id});
+  },
+
+  // --- Bulk imports ---
+  bulkAddVendors: function(rows) {
+    var added=0;
+    rows.forEach(function(r){ if(r.name){ r.id='v'+Date.now()+'_'+(added++); } });
+    var list=DB.getVendors(); rows.forEach(function(r){if(r.name)list.push(r);});
+    lsSet('vendors',list);
+    rows.forEach(function(r){if(r.name)sheetsPost('addVendor',{data:r});});
+    return rows.filter(function(r){return r.name;}).length;
+  },
+  bulkAddSocieties: function(rows) {
+    var added=0;
+    var list=DB.getSocieties();
+    rows.forEach(function(r){ if(r.name&&r.cc){ r.id='s'+Date.now()+'_'+(added++); list.push(r); sheetsPost('addSociety',{data:r}); }});
+    lsSet('societies',list);
+    return added;
+  },
+  bulkAddVehicles: function(rows) {
+    var added=0;
+    var list=DB.getVehicles();
+    rows.forEach(function(r){ if(r.no){ r.id='veh'+Date.now()+'_'+(added++); list.push(r); sheetsPost('addVehicle',{data:r}); }});
+    lsSet('vehicles',list);
+    return added;
+  },
+  bulkAddDrivers: function(rows) {
+    var added=0;
+    rows.forEach(function(r){ if(r.name){ MasterDB.addDriver(r); added++; }});
+    return added;
+  },
+  bulkAddFeedTypes: function(rows) {
+    var added=0;
+    rows.forEach(function(r){ if(r.name){ r.unit=r.unit||'Bag'; MasterDB.addFeedType(r); added++; }});
+    return added;
+  },
 };
 
 // ==================== MASTERS MODULE ====================
@@ -2325,72 +2412,46 @@ function saveScriptUrl(){
   SCRIPT_URL=url; localStorage.setItem('gkd_script_url',url); connectSheets();
 }
 function useOfflineMode(){ localStorage.setItem('gkd_use_local','1'); activateLocalMode(); }
-
-function _loadCacheFromLS(){
-  var keys=[['vendors','Vendors'],['purchases','Purchases'],['cc_allotments','CC_Allotments'],['societies','Societies'],['vehicles','Vehicles'],['feed_types','Feed_Types'],['drivers','Drivers'],['cc_centers','CC_Centers']];
-  keys.forEach(function(pair){try{var v=localStorage.getItem('gkd_'+pair[0]);if(v){var p=JSON.parse(v);if(Array.isArray(p))_cache[pair[1]]=p;}}catch(e){} });
-  _cache.Settings={dairy_balance:localStorage.getItem('gkd_dairy_balance')||'0'};
-  try{var as=JSON.parse(localStorage.getItem('gkd_alert_settings')||'{}');if(as.lowStock)_cache.Settings.lowStock=String(as.lowStock);if(as.warnStock)_cache.Settings.warnStock=String(as.warnStock);}catch(e){}
-}
-
 function activateLocalMode(){
-  SHEETS_READY=true;
-  DB._get=function(key){
-    var cm={'vendors':'Vendors','purchases':'Purchases','cc_allotments':'CC_Allotments','societies':'Societies','vehicles':'Vehicles','feed_types':'Feed_Types','drivers':'Drivers','cc_centers':'CC_Centers'};
-    if(cm[key]){if(_cache[cm[key]]&&_cache[cm[key]].length>0)return _cache[cm[key]];try{var v=localStorage.getItem('gkd_'+key);if(v){_cache[cm[key]]=JSON.parse(v);return _cache[cm[key]];}}catch(e){}return _cache[cm[key]]||[];}
-    try{var v2=localStorage.getItem('gkd_'+key);return v2?JSON.parse(v2):null;}catch(e){return null;}
-  };
-  DB._set=function(key,val){
-    var cm={'vendors':'Vendors','purchases':'Purchases','cc_allotments':'CC_Allotments','societies':'Societies','vehicles':'Vehicles','feed_types':'Feed_Types','drivers':'Drivers','cc_centers':'CC_Centers'};
-    if(cm[key])_cache[cm[key]]=val;
-    try{localStorage.setItem('gkd_'+key,JSON.stringify(val));}catch(e){}
-  };
-  DB.clearAll=function(){
-    Object.keys(localStorage).filter(function(k){return k.startsWith('gkd_');}).forEach(function(k){localStorage.removeItem(k);});
-    Object.keys(_cache).forEach(function(k){_cache[k]=Array.isArray(_cache[k])?[]:{};});
-  };
-  DB.getDairyBalance=function(){var v=parseFloat(localStorage.getItem('gkd_dairy_balance')||'0');return isNaN(v)?0:v;};
-  DB.setDairyBalance=function(v){localStorage.setItem('gkd_dairy_balance',String(v));_cache.Settings.dairy_balance=String(v);};
-  DB.getAlertSettings=function(){try{var v=localStorage.getItem('gkd_alert_settings');if(v){var s=JSON.parse(v);return{lowStock:s.lowStock||15,warnStock:s.warnStock||25,phone:s.phone||'',via:s.via||'SMS'};}}catch(e){}return{lowStock:15,warnStock:25,phone:'',via:'SMS'};};
-  DB.saveAlertSettings=function(cfg){localStorage.setItem('gkd_alert_settings',JSON.stringify(cfg));};
-  DB.getCCReceipts=function(cc){try{var v=localStorage.getItem('gkd_cc_receipts');if(v){var d=JSON.parse(v);return(d[cc]||[]).map(function(r){return Object.assign({},r,{received:parseFloat(r.received)||0,damage:parseFloat(r.damage)||0,net:parseFloat(r.net)||0,rate:parseFloat(r.rate)||0});});}}catch(e){}return[];};
-  DB.addCCReceipt=function(cc,r){var d={};try{var v=localStorage.getItem('gkd_cc_receipts');if(v)d=JSON.parse(v);}catch(e){}if(!d[cc])d[cc]=[];r.id='r'+Date.now();d[cc].unshift(r);localStorage.setItem('gkd_cc_receipts',JSON.stringify(d));return r;};
-  DB.getCCIssues=function(cc){try{var v=localStorage.getItem('gkd_cc_issues');if(v){var d=JSON.parse(v);return(d[cc]||[]).map(function(i){return Object.assign({},i,{qty:parseFloat(i.qty)||0,rate:parseFloat(i.rate)||0,opening:parseFloat(i.opening)||0,closing:parseFloat(i.closing)||0});});}}catch(e){}return[];};
-  DB.addCCIssue=function(cc,issue){var d={};try{var v=localStorage.getItem('gkd_cc_issues');if(v)d=JSON.parse(v);}catch(e){}if(!d[cc])d[cc]=[];issue.id='i'+Date.now();d[cc].unshift(issue);localStorage.setItem('gkd_cc_issues',JSON.stringify(d));return issue;};
-  DB.getVehicleLogs=function(cc){try{var v=localStorage.getItem('gkd_vehicle_logs');if(v){var d=JSON.parse(v);return d[cc]||[];}}catch(e){}return[];};
-  DB.addVehicleLog=function(cc,log){var d={};try{var v=localStorage.getItem('gkd_vehicle_logs');if(v)d=JSON.parse(v);}catch(e){}if(!d[cc])d[cc]=[];log.id='vl'+Date.now();d[cc].unshift(log);localStorage.setItem('gkd_vehicle_logs',JSON.stringify(d));return log;};
-  DB.getCCStock=function(cc){var r=DB.getCCReceipts(cc).reduce(function(s,x){return s+(parseFloat(x.net)||0);},0);var i=DB.getCCIssues(cc).reduce(function(s,x){return s+(parseFloat(x.qty)||0);},0);return Math.max(0,r-i);};
-  DB.getCCBalance=function(cc){var recv=DB.getAllotmentsByCC(cc).reduce(function(s,x){return s+(parseFloat(x.total)||0);},0);var iss=DB.getCCIssues(cc).reduce(function(s,x){return s+(parseFloat(x.qty)||0)*(parseFloat(x.rate)||0);},0);return Math.max(0,recv-iss);};
-  DB.addPurchase=function(p){p.id='p'+Date.now();var list=DB.getPurchases();list.unshift(p);DB._set('purchases',list);var bal=DB.getDairyBalance();DB.setDairyBalance(bal-(parseFloat(p.total)||0));return p;};
-  DB.addAllotment=function(a){a.id='a'+Date.now();var list=DB.getAllotments();list.unshift(a);DB._set('cc_allotments',list);return a;};
-  DB.addVendor=function(v2){v2.id='v'+Date.now();var list=DB.getVendors();list.push(v2);DB._set('vendors',list);return v2;};
-  DB.addSociety=function(s){s.id='s'+Date.now();var list=DB._get('societies')||[];list.push(s);DB._set('societies',list);return s;};
-  DB.getSocieties=function(cc){var s=DB._get('societies')||[];return cc?s.filter(function(x){return x.cc===cc;}):s;};
-  ['vendors','purchases','cc_allotments','societies','vehicles','feed_types','drivers','cc_centers'].forEach(function(k){if(!localStorage.getItem('gkd_'+k))localStorage.setItem('gkd_'+k,'[]');});
-  ['cc_receipts','cc_issues','vehicle_logs'].forEach(function(k){if(!localStorage.getItem('gkd_'+k))localStorage.setItem('gkd_'+k,'{}');});
-  if(!localStorage.getItem('gkd_dairy_balance'))localStorage.setItem('gkd_dairy_balance','0');
-  if(!localStorage.getItem('gkd_alert_settings'))localStorage.setItem('gkd_alert_settings',JSON.stringify({lowStock:15,warnStock:25,phone:'',via:'SMS'}));
-  _loadCacheFromLS();
+  SHEETS_READY=false; // offline — no sheets sync
+  ['vendors','purchases','cc_allotments','societies','vehicles','feed_types','drivers','cc_centers'].forEach(function(k){
+    if(!localStorage.getItem('gkd_'+k)) lsSet(k,'[]');
+  });
+  ['cc_receipts','cc_issues','vehicle_logs'].forEach(function(k){
+    if(!localStorage.getItem('gkd_'+k)) lsSet(k,{});
+  });
+  if(!localStorage.getItem('gkd_dairy_balance')) lsSet('dairy_balance',0);
+  if(!localStorage.getItem('gkd_alert_settings')) lsSet('alert_settings',{lowStock:15,warnStock:25,phone:'',via:'SMS'});
   document.getElementById('setup-screen').style.display='none';
   document.getElementById('loader').style.display='none';
   document.getElementById('login-screen').style.display='flex';
   showToast('Offline mode — data device-ல் save ஆகும்','info');
 }
-
 function connectSheets(){
   document.getElementById('setup-screen').style.display='none';
-  var loader=document.getElementById('loader');loader.style.display='flex';
+  var loader=document.getElementById('loader'); loader.style.display='flex';
   sheetsInit(
-    function(){_loadCacheFromLS();loader.style.display='none';document.getElementById('login-screen').style.display='flex';showToast('Google Sheets connected!','success');},
-    function(){loader.style.display='none';localStorage.removeItem('gkd_script_url');document.getElementById('setup-screen').style.display='flex';showToast('Connection failed. Offline mode use செய்யுங்கள்','error');}
+    function(){
+      SHEETS_READY=true;
+      loader.style.display='none';
+      document.getElementById('login-screen').style.display='flex';
+      showToast('Google Sheets connected! ☁️','success');
+    },
+    function(err){
+      loader.style.display='none';
+      localStorage.removeItem('gkd_script_url');
+      // Fall back to offline with localStorage data
+      SHEETS_READY=false;
+      document.getElementById('setup-screen').style.display='flex';
+      showToast('Sheets connection failed. Offline mode-ல் try செய்யுங்கள்','error');
+    }
   );
 }
-function reconfigureSheets(){localStorage.removeItem('gkd_script_url');localStorage.removeItem('gkd_use_local');location.reload();}
+function reconfigureSheets(){ localStorage.removeItem('gkd_script_url'); localStorage.removeItem('gkd_use_local'); location.reload(); }
 function clearAllData(){
-  if(!confirm('எல்லா data-வும் delete ஆகும்?'))return;
-  if(!confirm('Sure? Masters data-உம் போகும்!'))return;
-  Object.keys(localStorage).filter(function(k){return k.startsWith('gkd_');}).forEach(function(k){localStorage.removeItem(k);});
-  Object.keys(_cache).forEach(function(k){_cache[k]=Array.isArray(_cache[k])?[]:{};});
+  if(!confirm('எல்லா data-வும் delete ஆகும்?')) return;
+  if(!confirm('Sure? Masters, transactions எல்லாமே போகும்!')) return;
+  DB.clearAll();
   showToast('Data cleared!','success');
   setTimeout(function(){doLogout();},500);
 }
@@ -2400,12 +2461,14 @@ function refreshCurrentPage(){
 }
 window.addEventListener('DOMContentLoaded',function(){
   applyTheme(localStorage.getItem('gkd_theme')||'navy');
-  if(localStorage.getItem('gkd_use_local')){activateLocalMode();return;}
+  if(localStorage.getItem('gkd_use_local')){ activateLocalMode(); return; }
   var saved=localStorage.getItem('gkd_script_url');
-  if(saved){SCRIPT_URL=saved;connectSheets();}
-  else{document.getElementById('loader').style.display='none';showSetup();}
+  if(saved){ SCRIPT_URL=saved; connectSheets(); }
+  else{ document.getElementById('loader').style.display='none'; showSetup(); }
 });
-if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js').catch(function(){});});}
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js').catch(function(){});});
+}
 </script>
 </body>
 </html>
