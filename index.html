@@ -1,0 +1,2192 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GK Dairy">
+<meta name="theme-color" content="#0A1628">
+<title>GK Dairy</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%230A1628'/><text y='130' x='96' text-anchor='middle' font-size='110'>🐄</text></svg>">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Noto+Sans+Tamil:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:    #0A1628;
+  --navy2:   #0F2040;
+  --navy3:   #1A3560;
+  --gold:    #D4A843;
+  --gold2:   #F0C060;
+  --gold3:   #FFF0C0;
+  --blue:    #1E88E5;
+  --blue2:   #42A5F5;
+  --green:   #00C853;
+  --red:     #FF5252;
+  --amber:   #FFB300;
+  --white:   #FFFFFF;
+  --text:    #E8EDF5;
+  --text2:   #8A9DC0;
+  --text3:   #4A5F80;
+  --surface: #0F2040;
+  --surface2:#162840;
+  --card:    #1A3060;
+  --border:  rgba(212,168,67,.18);
+  --border2: rgba(212,168,67,.35);
+  --radius:  14px;
+  --radius-lg:20px;
+  --gold-glow: 0 0 24px rgba(212,168,67,.25);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--navy);color:var(--text);font-family:'Noto Sans Tamil','Rajdhani',sans-serif}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--navy3);border-radius:2px}
+
+/* ===== TOAST ===== */
+#toast{position:fixed;top:calc(var(--safe-top) + 60px);left:50%;transform:translateX(-50%);z-index:9999;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:8px}
+.toast-item{background:#1A3060;border:1px solid var(--border2);padding:10px 20px;border-radius:30px;font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;animation:toastIn .25s ease;box-shadow:var(--gold-glow)}
+.toast-item.success{border-color:rgba(0,200,83,.5);color:#80FFB0}
+.toast-item.error{border-color:rgba(255,82,82,.5);color:#FF9090}
+.toast-item.info{border-color:var(--border2);color:var(--gold2)}
+@keyframes toastIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ===== SETUP / CONFIG SCREEN ===== */
+.setup-screen{position:fixed;inset:0;background:var(--navy);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;z-index:100;overflow-y:auto}
+.setup-card{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:28px 22px;width:100%;max-width:420px;box-shadow:var(--gold-glow)}
+.setup-logo{text-align:center;margin-bottom:24px}
+.setup-logo .cow{font-size:52px;display:block;margin-bottom:8px}
+.setup-logo h1{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;color:var(--gold);letter-spacing:2px}
+.setup-logo p{font-size:12px;color:var(--text2);margin-top:4px}
+.setup-steps{background:rgba(212,168,67,.08);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:12px;color:var(--text2);line-height:2;margin-bottom:20px}
+.setup-steps a{color:var(--gold2);text-decoration:none}
+.setup-steps strong{color:var(--text)}
+.inp{width:100%;padding:13px 16px;background:var(--navy2);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text);font-family:inherit;outline:none;transition:border-color .2s;margin-bottom:12px}
+.inp:focus{border-color:var(--gold)}
+.inp::placeholder{color:var(--text3)}
+.btn-gold{width:100%;padding:15px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--navy);border:none;border-radius:12px;font-size:15px;font-weight:700;font-family:'Rajdhani',sans-serif;letter-spacing:.5px;cursor:pointer;transition:all .15s;margin-top:4px}
+.btn-gold:active{transform:scale(.97);opacity:.9}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:10px;padding:10px 20px;font-size:13px;font-family:inherit;cursor:pointer;width:100%;margin-top:10px}
+
+/* ===== LOADER ===== */
+#loader{position:fixed;inset:0;background:var(--navy);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200}
+.loader-cow{font-size:60px;animation:float 2s ease-in-out infinite}
+.loader-title{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;color:var(--gold);letter-spacing:3px;margin:12px 0 6px}
+.loader-sub{font-size:12px;color:var(--text2);margin-bottom:24px}
+.loader-dots{display:flex;gap:8px}
+.loader-dots span{width:8px;height:8px;background:var(--gold);border-radius:50%;animation:ldot 1.2s ease-in-out infinite}
+.loader-dots span:nth-child(2){animation-delay:.2s}
+.loader-dots span:nth-child(3){animation-delay:.4s}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes ldot{0%,80%,100%{transform:scale(.5);opacity:.4}40%{transform:scale(1);opacity:1}}
+
+/* ===== LOGIN ===== */
+#login-screen{position:fixed;inset:0;background:linear-gradient(160deg,var(--navy) 0%,var(--navy2) 50%,#0A2040 100%);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;z-index:90;overflow-y:auto}
+.login-header{text-align:center;margin-bottom:36px}
+.login-cow{font-size:64px;display:block;animation:float 3s ease-in-out infinite;filter:drop-shadow(0 8px 24px rgba(212,168,67,.3))}
+.login-brand{font-family:'Rajdhani',sans-serif;font-size:32px;font-weight:700;color:var(--gold);letter-spacing:4px;margin-top:8px}
+.login-tagline{font-size:12px;color:var(--text2);letter-spacing:1px;margin-top:4px}
+.login-card{background:rgba(26,48,96,.7);backdrop-filter:blur(20px);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:28px 22px;width:100%;max-width:380px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.login-card label{display:block;font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px}
+.login-card select,.login-card input{width:100%;padding:13px 16px;background:var(--navy);border:1.5px solid var(--border);border-radius:12px;font-size:14px;color:var(--text);font-family:inherit;outline:none;margin-bottom:14px;-webkit-appearance:none;appearance:none;transition:border-color .2s}
+.login-card select:focus,.login-card input:focus{border-color:var(--gold)}
+.login-card select option{background:var(--navy2)}
+.login-hint{background:rgba(212,168,67,.08);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--gold2);margin-bottom:16px;line-height:1.5}
+.select-wrap{position:relative;margin-bottom:14px}
+.select-wrap::after{content:'▾';position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--gold);pointer-events:none;font-size:14px}
+.select-wrap select{margin-bottom:0}
+
+/* ===== APP SHELL ===== */
+#app{position:fixed;inset:0;display:none;flex-direction:column;background:var(--navy)}
+#app.active{display:flex}
+
+/* ===== TOPBAR ===== */
+.topbar{background:linear-gradient(135deg,var(--navy2),var(--navy3));padding:calc(var(--safe-top) + 10px) 16px 10px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);flex-shrink:0;box-shadow:0 2px 20px rgba(0,0,0,.4)}
+.topbar-logo{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--gold);letter-spacing:2px;flex:1}
+.topbar-role{background:rgba(212,168,67,.15);border:1px solid var(--border2);padding:4px 12px;border-radius:20px;font-size:11px;color:var(--gold2);font-weight:600}
+.topbar-user{width:32px;height:32px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:var(--navy);cursor:pointer;flex-shrink:0}
+
+/* ===== MAIN SCROLL AREA ===== */
+.main-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:16px 14px calc(80px + var(--safe-bot))}
+
+/* ===== BOTTOM NAV ===== */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border2);display:flex;align-items:stretch;padding-bottom:var(--safe-bot);z-index:50;box-shadow:0 -4px 24px rgba(0,0,0,.4)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px;cursor:pointer;transition:all .15s;min-height:56px;position:relative}
+.nav-item:active{transform:scale(.92)}
+.nav-icon{font-size:20px;margin-bottom:3px;transition:all .2s}
+.nav-label{font-size:10px;color:var(--text2);font-weight:500;transition:color .2s;text-align:center}
+.nav-item.active .nav-icon{transform:translateY(-2px)}
+.nav-item.active .nav-label{color:var(--gold)}
+.nav-active-bar{position:absolute;top:0;left:20%;right:20%;height:2px;background:var(--gold);border-radius:0 0 3px 3px;display:none}
+.nav-item.active .nav-active-bar{display:block}
+.nav-badge{position:absolute;top:6px;right:20%;background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center}
+
+/* ===== PAGE TRANSITIONS ===== */
+.page{display:none;animation:pageIn .2s ease}
+.page.active{display:block}
+@keyframes pageIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ===== PAGE TITLE ===== */
+.page-title{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:var(--white);margin-bottom:16px;display:flex;align-items:center;gap:10px;letter-spacing:.5px}
+.page-title .pt-icon{font-size:22px}
+
+/* ===== STAT CARDS ===== */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.stat-card{background:linear-gradient(135deg,var(--card),var(--surface2));border:1px solid var(--border);border-radius:var(--radius);padding:14px 12px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:-20px;right:-20px;width:60px;height:60px;border-radius:50%;background:rgba(212,168,67,.06);pointer-events:none}
+.stat-card.gold{border-color:var(--border2);box-shadow:var(--gold-glow)}
+.stat-card.gold::before{background:rgba(212,168,67,.12)}
+.stat-lbl{font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.stat-val{font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--white)}
+.stat-val.gold{color:var(--gold)}
+.stat-val.green{color:var(--green)}
+.stat-val.red{color:var(--red)}
+.stat-val.amber{color:var(--amber)}
+.stat-sub{font-size:10px;color:var(--text3);margin-top:3px}
+
+/* ===== CARDS ===== */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:14px;box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.card-title{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;color:var(--gold2);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;letter-spacing:.3px}
+.card-title .ct-icon{font-size:15px}
+
+/* ===== ALERTS ===== */
+.alert{padding:12px 14px;border-radius:12px;font-size:12.5px;margin-bottom:10px;display:flex;align-items:flex-start;gap:10px;line-height:1.5;animation:pageIn .3s ease}
+.alert-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.alert-danger{background:rgba(255,82,82,.1);border:1px solid rgba(255,82,82,.3);color:#FF9090}
+.alert-warn{background:rgba(255,179,0,.1);border:1px solid rgba(255,179,0,.3);color:#FFCC60}
+.alert-info{background:rgba(30,136,229,.1);border:1px solid rgba(30,136,229,.3);color:#90C8FF}
+.alert-success{background:rgba(0,200,83,.1);border:1px solid rgba(0,200,83,.3);color:#80FFB0}
+
+/* ===== FORMS ===== */
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:13px 16px;background:var(--navy2);border:1.5px solid var(--border);border-radius:12px;font-size:14px;color:var(--text);font-family:inherit;outline:none;transition:border-color .2s;-webkit-appearance:none;appearance:none}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--gold)}
+.form-group select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M6 8 0 0h12z' fill='%23D4A843'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+.form-group select option{background:var(--navy2);color:var(--text)}
+
+/* ===== BUTTONS ===== */
+.btn{padding:13px 20px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:'Rajdhani',sans-serif;letter-spacing:.3px;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn:active{transform:scale(.96)}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--navy)}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-success{background:var(--green);color:var(--navy)}
+.btn-danger{background:var(--red);color:#fff}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text2)}
+.btn-full{width:100%;justify-content:center}
+.btn-row{display:flex;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+
+/* ===== TABLE ===== */
+.tbl-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border);margin-top:2px}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:500px}
+thead tr{background:var(--navy2)}
+th{padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid rgba(212,168,67,.06);color:var(--text);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(212,168,67,.04)}
+
+/* ===== BADGES ===== */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap;letter-spacing:.3px}
+.badge-gold{background:rgba(212,168,67,.15);color:var(--gold2);border:1px solid var(--border)}
+.badge-green{background:rgba(0,200,83,.12);color:#80FFB0;border:1px solid rgba(0,200,83,.25)}
+.badge-red{background:rgba(255,82,82,.12);color:#FF9090;border:1px solid rgba(255,82,82,.25)}
+.badge-amber{background:rgba(255,179,0,.12);color:#FFCC60;border:1px solid rgba(255,179,0,.25)}
+.badge-blue{background:rgba(30,136,229,.15);color:#90C8FF;border:1px solid rgba(30,136,229,.25)}
+
+/* ===== EMPTY STATE ===== */
+.empty-state{text-align:center;padding:40px 20px;color:var(--text2)}
+.empty-icon{font-size:44px;margin-bottom:12px;opacity:.5;display:block}
+
+/* ===== SECTION DIVIDER ===== */
+.section-lbl{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px;padding-left:2px}
+
+/* ===== MASTER HOME GRID ===== */
+.master-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.master-tile{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px 12px;cursor:pointer;transition:all .2s;text-align:center;position:relative;overflow:hidden}
+.master-tile:active{transform:scale(.95)}
+.master-tile::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent,rgba(212,168,67,.06));pointer-events:none}
+.master-tile .mt-icon{font-size:28px;margin-bottom:8px;display:block}
+.master-tile .mt-label{font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px}
+.master-tile .mt-count{font-size:11px;color:var(--text2)}
+.master-tile .mt-bar{height:2px;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:1px;position:absolute;top:0;left:0;right:0}
+
+/* ===== BACK HEADER ===== */
+.back-header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.back-btn{width:36px;height:36px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0}
+.back-btn:active{transform:scale(.92)}
+.back-title{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--white);flex:1}
+
+/* ===== IMPORT BTN ===== */
+.import-row{display:flex;gap:8px;margin-bottom:14px}
+.import-label{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;background:rgba(30,136,229,.15);border:1px solid rgba(30,136,229,.3);border-radius:10px;font-size:12px;font-weight:600;color:var(--blue2);cursor:pointer}
+.template-btn{padding:11px 14px;background:rgba(0,200,83,.12);border:1px solid rgba(0,200,83,.25);border-radius:10px;font-size:12px;font-weight:600;color:#80FFB0;cursor:pointer;font-family:inherit;white-space:nowrap}
+
+/* ===== FAB ===== */
+.fab{position:fixed;bottom:calc(72px + var(--safe-bot) + 16px);right:16px;width:52px;height:52px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;box-shadow:0 4px 20px rgba(212,168,67,.4);transition:all .2s;z-index:40}
+.fab:active{transform:scale(.9)}
+
+/* ===== REPORT FILTER ===== */
+.filter-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+
+/* ===== SHIMMER (Gold) ===== */
+.shimmer{background:linear-gradient(90deg,transparent 0%,rgba(212,168,67,.15) 50%,transparent 100%);background-size:200%;animation:shimmer 2s infinite}
+@keyframes shimmer{0%{background-position:200%}100%{background-position:-200%}}
+
+/* ===== SETTINGS PANEL ===== */
+.settings-panel{position:fixed;inset:0;background:rgba(10,22,40,.95);backdrop-filter:blur(10px);z-index:80;display:none;flex-direction:column;padding:calc(var(--safe-top) + 16px) 16px calc(var(--safe-bot) + 16px)}
+.settings-panel.open{display:flex}
+.sp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.sp-header h2{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:var(--gold)}
+.sp-close{font-size:22px;cursor:pointer;color:var(--text2);padding:4px}
+.sp-item{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.sp-item:active{opacity:.7}
+.sp-icon{font-size:20px;width:32px;text-align:center}
+.sp-text .sp-lbl{font-size:14px;color:var(--text);font-weight:500}
+.sp-text .sp-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.sp-arrow{margin-left:auto;color:var(--text3);font-size:14px}
+
+/* ===== RESPONSIVE: DESKTOP BONUS ===== */
+@media(min-width:600px){
+  #login-screen,#app,#loader,.setup-screen{max-width:430px;left:50%;transform:translateX(-50%);right:auto;border-left:1px solid var(--border);border-right:1px solid var(--border)}
+  #toast{left:calc(50% + 0px)}
+}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-cow">🐄</div>
+  <div class="loader-title">GK DAIRY</div>
+  <div class="loader-sub">தீவன மேலாண்மை அமைப்பு</div>
+  <div class="loader-dots"><span></span><span></span><span></span></div>
+</div>
+
+<!-- SETUP SCREEN -->
+<div class="setup-screen" id="setup-screen" style="display:none">
+  <div class="setup-card">
+    <div class="setup-logo">
+      <span class="cow">🐄</span>
+      <h1>GK DAIRY</h1>
+      <p>Google Sheets-ல் connect செய்யுங்கள்</p>
+    </div>
+    <div class="setup-steps">
+      <strong>Setup (5 நிமிடம்):</strong><br>
+      1. <a href="https://docs.google.com/spreadsheets/create" target="_blank">New Google Sheet</a> திறக்கவும்<br>
+      2. Extensions → <strong>Apps Script</strong><br>
+      3. <strong>GKDairy_AppScript.gs</strong> paste → Save → Run initSheets<br>
+      4. Deploy → Web app → <strong>Anyone</strong> → URL copy<br>
+      5. இங்கே paste → Connect!
+    </div>
+    <input type="url" class="inp" id="setup-url" placeholder="https://script.google.com/macros/s/.../exec">
+    <button class="btn-gold" onclick="saveScriptUrl()">📊 Google Sheets-ல் Connect →</button>
+    <button class="btn-ghost" onclick="useOfflineMode()">Offline mode (device-ல் மட்டும்)</button>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-header">
+    <span class="login-cow">🐄</span>
+    <div class="login-brand">GK DAIRY</div>
+    <div class="login-tagline">தீவன மேலாண்மை அமைப்பு</div>
+  </div>
+  <div class="login-card">
+    <div class="form-group">
+      <label>Login Type</label>
+      <div class="select-wrap">
+        <select id="lt" onchange="updateLoginHint()">
+          <option value="dairy">🏭 Main Dairy</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="uname" placeholder="பயனர் பெயர்" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="upwd" placeholder="கடவுச்சொல்" autocomplete="current-password">
+    </div>
+    <div class="login-hint" id="login-hint">Main Dairy: Vendors, CC allocation, reports & balance</div>
+    <button class="btn-gold btn-full" onclick="doLogin()" style="margin-top:4px">LOGIN →</button>
+  </div>
+</div>
+
+<!-- SETTINGS PANEL -->
+<div class="settings-panel" id="settings-panel">
+  <div class="sp-header">
+    <h2>⚙️ Settings</h2>
+    <span class="sp-close" onclick="closeSettings()">✕</span>
+  </div>
+  <div style="margin-bottom:16px">
+  <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">🎨 Theme</div>
+  <div id="theme-picker-area"><button class="theme-btn" data-theme="navy" onclick="applyTheme('navy')" style="padding:8px 12px;background:var(--surface2);border:2px solid var(--border);border-radius:10px;cursor:pointer;font-family:inherit;margin:3px;transition:all .15s"><span style="font-size:18px">🌊</span><div style="font-size:10px;color:var(--text);margin-top:3px">Navy</div></button><button class="theme-btn" data-theme="forest" onclick="applyTheme('forest')" style="padding:8px 12px;background:var(--surface2);border:2px solid var(--border);border-radius:10px;cursor:pointer;font-family:inherit;margin:3px;transition:all .15s"><span style="font-size:18px">🌿</span><div style="font-size:10px;color:var(--text);margin-top:3px">Forest</div></button><button class="theme-btn" data-theme="sunset" onclick="applyTheme('sunset')" style="padding:8px 12px;background:var(--surface2);border:2px solid var(--border);border-radius:10px;cursor:pointer;font-family:inherit;margin:3px;transition:all .15s"><span style="font-size:18px">🌅</span><div style="font-size:10px;color:var(--text);margin-top:3px">Sunset</div></button><button class="theme-btn" data-theme="purple" onclick="applyTheme('purple')" style="padding:8px 12px;background:var(--surface2);border:2px solid var(--border);border-radius:10px;cursor:pointer;font-family:inherit;margin:3px;transition:all .15s"><span style="font-size:18px">👑</span><div style="font-size:10px;color:var(--text);margin-top:3px">Purple</div></button></div></div><div class="sp-item" onclick="reconfigureSheets()">
+    <span class="sp-icon">📊</span>
+    <div class="sp-text"><div class="sp-lbl">Google Sheets</div><div class="sp-sub">Reconnect / Change URL</div></div>
+    <span class="sp-arrow">›</span>
+  </div>
+  <div class="sp-item" onclick="clearAllData()">
+    <span class="sp-icon">🗑️</span>
+    <div class="sp-text"><div class="sp-lbl">Clear All Data</div><div class="sp-sub">எல்லா data-வும் delete</div></div>
+    <span class="sp-arrow">›</span>
+  </div>
+  <div class="sp-item" onclick="doLogout();closeSettings()">
+    <span class="sp-icon">🚪</span>
+    <div class="sp-text"><div class="sp-lbl">Logout</div><div class="sp-sub">Login page-க்கு திரும்பு</div></div>
+    <span class="sp-arrow">›</span>
+  </div>
+  <div style="margin-top:auto;text-align:center;color:var(--text3);font-size:11px;padding-top:20px">
+    GK Dairy v2.0 • PWA
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo">🐄 GK DAIRY</div>
+    <div class="topbar-role" id="role-badge">Dairy</div>
+    <div class="topbar-user" id="user-avatar" onclick="openSettings()">A</div>
+  </div>
+  <div class="main-area" id="main-area">
+    <!-- pages injected here -->
+  </div>
+  <nav class="bottom-nav" id="bottom-nav"></nav>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>MOBILE_UI=true;</script>
+
+
+
+<script>// ==================== GOOGLE SHEETS DB LAYER ====================
+// All data reads/writes go to Google Sheets via Apps Script Web App URL
+
+var SCRIPT_URL = ''; // உங்கள் Web App URL இங்கே வரும்
+
+// In-memory cache — loaded once, updated on each write
+var _cache = {
+  Vendors:       [],
+  Purchases:     [],
+  CC_Allotments: [],
+  CC_Receipts:   [],
+  CC_Issues:     [],
+  Societies:     [],
+  Vehicles:      [],
+  Vehicle_Logs:  [],
+  Feed_Types:    [],
+  Drivers:       [],
+  CC_Centers:    [],
+  Settings:      {},
+};
+
+var SHEETS_READY = false;
+
+// ---- HTTP helpers ----
+function sheetsGet(action, params) {
+  params = params || {};
+  params.action = action;
+  var qs = Object.keys(params).map(function(k){ return k+'='+encodeURIComponent(params[k]); }).join('&');
+  return fetch(SCRIPT_URL + '?' + qs).then(function(r){ return r.json(); });
+}
+
+function sheetsPost(action, data) {
+  data.action = action;
+  return fetch(SCRIPT_URL, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data),
+    mode: 'cors',
+  }).then(function(r){ return r.json(); });
+}
+
+// ---- Load all data at startup ----
+function sheetsInit(onReady, onError) {
+  if (!SCRIPT_URL) { if(onError) onError('No URL'); return; }
+  sheetsGet('getAll').then(function(res) {
+    if (!res.ok) throw new Error(res.error || 'Load failed');
+    var d = res.data;
+    _cache.Vendors       = d.Vendors       || [];
+    _cache.Purchases     = d.Purchases     || [];
+    _cache.CC_Allotments = d.CC_Allotments || [];
+    _cache.CC_Receipts   = d.CC_Receipts   || [];
+    _cache.CC_Issues     = d.CC_Issues     || [];
+    _cache.Societies     = d.Societies     || [];
+    _cache.Vehicles      = d.Vehicles      || [];
+    _cache.Vehicle_Logs  = d.Vehicle_Logs  || [];
+    _cache.Feed_Types    = d.Feed_Types    || [];
+    _cache.Drivers       = d.Drivers       || [];
+    _cache.CC_Centers    = d.CC_Centers    || [];
+    _cache.Settings      = d.Settings      || {};
+    SHEETS_READY = true;
+    if (onReady) onReady();
+  }).catch(function(e) {
+    if (onError) onError(e.message || e);
+  });
+}
+
+// ---- Helper: parse numbers from sheet strings ----
+function num(v) { return parseFloat(v) || 0; }
+
+// ==================== DB OBJECT (Sheets-backed) ====================
+var DB = {
+
+  // --- Vendors ---
+  getVendors: function() { return _cache.Vendors; },
+  addVendor: function(v) {
+    v.id = 'v'+Date.now();
+    _cache.Vendors.push(v);
+    sheetsPost('addVendor', {data: v});
+    return v;
+  },
+
+  // --- Purchases ---
+  getPurchases: function() {
+    return _cache.Purchases.map(function(p){
+      return Object.assign({}, p, {qty:num(p.qty), rate:num(p.rate), total:num(p.total)});
+    });
+  },
+  addPurchase: function(p) {
+    p.id = 'p'+Date.now();
+    _cache.Purchases.unshift(p);
+    var bal = num(_cache.Settings['dairy_balance'] || 0);
+    _cache.Settings['dairy_balance'] = String(bal - num(p.total));
+    sheetsPost('addPurchase', {data: p});
+    return p;
+  },
+
+  // --- CC Allotments ---
+  getAllotments: function() {
+    return _cache.CC_Allotments.map(function(a){
+      return Object.assign({}, a, {qty:num(a.qty), rate:num(a.rate), total:num(a.total)});
+    });
+  },
+  addAllotment: function(a) {
+    a.id = 'a'+Date.now();
+    _cache.CC_Allotments.unshift(a);
+    sheetsPost('addAllotment', {data: a});
+    return a;
+  },
+  getAllotmentsByCC: function(cc) {
+    return this.getAllotments().filter(function(a){ return a.cc === cc; });
+  },
+
+  // --- CC Receipts ---
+  getCCReceipts: function(cc) {
+    return _cache.CC_Receipts.filter(function(r){ return r.cc === cc; }).map(function(r){
+      return Object.assign({}, r, {received:num(r.received), damage:num(r.damage), net:num(r.net), rate:num(r.rate)});
+    });
+  },
+  addCCReceipt: function(cc, r) {
+    r.id = 'r'+Date.now();
+    r.cc = cc;
+    _cache.CC_Receipts.unshift(r);
+    sheetsPost('addCCReceipt', {data: r});
+    return r;
+  },
+
+  // --- CC Issues ---
+  getCCIssues: function(cc) {
+    return _cache.CC_Issues.filter(function(i){ return i.cc === cc; }).map(function(i){
+      return Object.assign({}, i, {qty:num(i.qty), rate:num(i.rate), opening:num(i.opening), closing:num(i.closing)});
+    });
+  },
+  addCCIssue: function(cc, issue) {
+    issue.id = 'i'+Date.now();
+    issue.cc = cc;
+    _cache.CC_Issues.unshift(issue);
+    sheetsPost('addCCIssue', {data: issue});
+    return issue;
+  },
+
+  // --- Societies ---
+  getSocieties: function(cc) {
+    var s = _cache.Societies;
+    return cc ? s.filter(function(x){ return x.cc === cc; }) : s;
+  },
+  addSociety: function(s) {
+    s.id = 's'+Date.now();
+    _cache.Societies.push(s);
+    sheetsPost('addSociety', {data: s});
+    return s;
+  },
+
+  // --- Vehicles ---
+  getVehicles: function() { return _cache.Vehicles; },
+  getVehicleLogs: function(cc) {
+    return _cache.Vehicle_Logs.filter(function(l){ return l.cc === cc; });
+  },
+  addVehicleLog: function(cc, log) {
+    log.id = 'vl'+Date.now();
+    log.cc = cc;
+    _cache.Vehicle_Logs.unshift(log);
+    sheetsPost('addVehicleLog', {data: log});
+    return log;
+  },
+
+  // --- Balance ---
+  getDairyBalance: function() { return num(_cache.Settings['dairy_balance'] || 0); },
+  setDairyBalance: function(v) {
+    _cache.Settings['dairy_balance'] = String(v);
+    sheetsPost('setSetting', {key: 'dairy_balance', value: String(v)});
+  },
+
+  // --- CC Stock ---
+  getCCStock: function(cc) {
+    var r = this.getCCReceipts(cc).reduce(function(s,x){ return s+(x.net||0); }, 0);
+    var i = this.getCCIssues(cc).reduce(function(s,x){ return s+(x.qty||0); }, 0);
+    return Math.max(0, r - i);
+  },
+  getCCBalance: function(cc) {
+    var recv = this.getAllotmentsByCC(cc).reduce(function(s,x){ return s+x.total; }, 0);
+    var iss  = this.getCCIssues(cc).reduce(function(s,x){ return s+(x.qty*x.rate); }, 0);
+    return Math.max(0, recv - iss);
+  },
+
+  // --- Alert Settings ---
+  getAlertSettings: function() {
+    var s = _cache.Settings;
+    return {
+      lowStock:  num(s['lowStock']  || 15),
+      warnStock: num(s['warnStock'] || 25),
+      phone:     s['alert_phone'] || '',
+      via:       s['alert_via']   || 'SMS',
+    };
+  },
+  saveAlertSettings: function(cfg) {
+    _cache.Settings['lowStock']   = String(cfg.lowStock);
+    _cache.Settings['warnStock']  = String(cfg.warnStock);
+    _cache.Settings['alert_phone']= cfg.phone;
+    _cache.Settings['alert_via']  = cfg.via;
+    sheetsPost('setSetting', {key:'lowStock',    value:String(cfg.lowStock)});
+    sheetsPost('setSetting', {key:'warnStock',   value:String(cfg.warnStock)});
+    sheetsPost('setSetting', {key:'alert_phone', value:cfg.phone});
+    sheetsPost('setSetting', {key:'alert_via',   value:cfg.via});
+  },
+
+  // --- Clear all ---
+  clearAll: function() {
+    Object.keys(_cache).forEach(function(k){ _cache[k] = Array.isArray(_cache[k]) ? [] : {}; });
+    sheetsPost('clearAll', {});
+  },
+
+  // --- Date filter ---
+  filterByDate: function(list, from, to) {
+    return list.filter(function(x){
+      if(!x.date) return true;
+      if(from && x.date < from) return false;
+      if(to   && x.date > to)   return false;
+      return true;
+    });
+  },
+
+  // --- Legacy shims for _get/_set (masters.js uses these) ---
+  _get: function(key) {
+    var map = {
+      'vendors':_cache.Vendors, 'purchases':_cache.Purchases,
+      'cc_allotments':_cache.CC_Allotments, 'societies':_cache.Societies,
+      'vehicles':_cache.Vehicles, 'feed_types':_cache.Feed_Types,
+      'drivers':_cache.Drivers, 'cc_centers':_cache.CC_Centers,
+    };
+    return map[key] !== undefined ? map[key] : null;
+  },
+  _set: function(key, val) {
+    var sheetMap = {
+      'vendors':'Vendors', 'purchases':'Purchases',
+      'cc_allotments':'CC_Allotments', 'societies':'Societies',
+      'vehicles':'Vehicles', 'feed_types':'Feed_Types',
+      'drivers':'Drivers', 'cc_centers':'CC_Centers',
+    };
+    var cacheMap = {
+      'vendors':'Vendors', 'purchases':'Purchases',
+      'cc_allotments':'CC_Allotments', 'societies':'Societies',
+      'vehicles':'Vehicles', 'feed_types':'Feed_Types',
+      'drivers':'Drivers', 'cc_centers':'CC_Centers',
+    };
+    if (cacheMap[key]) _cache[cacheMap[key]] = val;
+    // Sync individual changed records to Sheets is handled by each master save function
+    // For bulk operations from masters.js, we sync the full array:
+    if (sheetMap[key]) {
+      // Clear + re-add is expensive; for masters edits we use update/delete endpoints
+      // This _set is called by masters after manual edits — sync will happen via dedicated endpoints
+    }
+  },
+};
+
+// Override MasterDB to use Sheets endpoints
+var MasterDB = {
+  getFeedTypes:    function(){ return _cache.Feed_Types; },
+  addFeedType:     function(ft){ ft.id='ft'+Date.now(); _cache.Feed_Types.push(ft); sheetsPost('addFeedType',{data:ft}); return ft; },
+  updateFeedType:  function(id,data){ var i=_cache.Feed_Types.findIndex(function(x){return x.id===id;}); if(i>=0) _cache.Feed_Types[i]=Object.assign(_cache.Feed_Types[i],data); sheetsPost('updateFeedType',{id:id,data:data}); },
+  deleteFeedType:  function(id){ _cache.Feed_Types=_cache.Feed_Types.filter(function(x){return x.id!==id;}); sheetsPost('deleteFeedType',{id:id}); },
+
+  getDrivers:      function(){ return _cache.Drivers; },
+  addDriver:       function(d){ d.id='dr'+Date.now(); _cache.Drivers.push(d); sheetsPost('addDriver',{data:d}); return d; },
+  updateDriver:    function(id,data){ var i=_cache.Drivers.findIndex(function(x){return x.id===id;}); if(i>=0) _cache.Drivers[i]=Object.assign(_cache.Drivers[i],data); sheetsPost('updateDriver',{id:id,data:data}); },
+  deleteDriver:    function(id){ _cache.Drivers=_cache.Drivers.filter(function(x){return x.id!==id;}); sheetsPost('deleteDriver',{id:id}); },
+
+  getCCCenters:    function(){ return _cache.CC_Centers; },
+  addCCCenter:     function(c){ c.id='cc_'+Date.now(); _cache.CC_Centers.push(c); sheetsPost('addCCCenter',{data:c}); return c; },
+  updateCCCenter:  function(id,data){ var i=_cache.CC_Centers.findIndex(function(x){return x.id===id;}); if(i>=0) _cache.CC_Centers[i]=Object.assign(_cache.CC_Centers[i],data); sheetsPost('updateCCCenter',{id:id,data:data}); },
+  deleteCCCenter:  function(id){ _cache.CC_Centers=_cache.CC_Centers.filter(function(x){return x.id!==id;}); sheetsPost('deleteCCCenter',{id:id}); },
+
+  // Bulk imports
+  bulkAddVendors:    function(rows){ rows.forEach(function(r){ if(r.name) DB.addVendor(r); }); return rows.length; },
+  bulkAddSocieties:  function(rows){ rows.forEach(function(r){ if(r.name&&r.cc) DB.addSociety(r); }); return rows.length; },
+  bulkAddVehicles:   function(rows){ rows.forEach(function(r){ if(r.no){ r.id='veh'+Date.now(); _cache.Vehicles.push(r); sheetsPost('addVehicle',{data:r}); } }); return rows.length; },
+  bulkAddDrivers:    function(rows){ rows.forEach(function(r){ if(r.name) MasterDB.addDriver(r); }); return rows.length; },
+  bulkAddFeedTypes:  function(rows){ rows.forEach(function(r){ if(r.name){ r.unit=r.unit||'Bag'; MasterDB.addFeedType(r); } }); return rows.length; },
+};
+
+// ==================== MASTERS MODULE ====================
+// Vendor, Society, Vehicle, Driver, Feed Type, CC Center
+// Create + Edit + Delete + Import (CSV/Excel) + Export Template
+
+var _editState = {};
+
+// ==================== MASTER DB EXTENSIONS ====================
+var MasterDB = {
+  getFeedTypes: function(){
+    var d = DB._get('feed_types');
+    if(d) return d;
+    DB._set('feed_types', []);
+    return [];
+  },
+  addFeedType: function(ft){
+    var list = this.getFeedTypes();
+    ft.id = 'ft'+Date.now();
+    list.push(ft);
+    DB._set('feed_types', list);
+    return ft;
+  },
+  updateFeedType: function(id, data){
+    var list = this.getFeedTypes();
+    var i = list.findIndex(function(x){return x.id===id;});
+    if(i>=0){ list[i] = Object.assign(list[i], data); DB._set('feed_types', list); }
+  },
+  deleteFeedType: function(id){
+    DB._set('feed_types', this.getFeedTypes().filter(function(x){return x.id!==id;}));
+  },
+  getDrivers: function(){
+    var d = DB._get('drivers');
+    if(d) return d;
+    DB._set('drivers', []);
+    return [];
+  },
+  addDriver: function(d){
+    var list = this.getDrivers();
+    d.id = 'dr'+Date.now();
+    list.push(d);
+    DB._set('drivers', list);
+    return d;
+  },
+  updateDriver: function(id, data){
+    var list = this.getDrivers();
+    var i = list.findIndex(function(x){return x.id===id;});
+    if(i>=0){ list[i] = Object.assign(list[i], data); DB._set('drivers', list); }
+  },
+  deleteDriver: function(id){
+    DB._set('drivers', this.getDrivers().filter(function(x){return x.id!==id;}));
+  },
+  getCCCenters: function(){
+    var d = DB._get('cc_centers');
+    if(d) return d;
+    DB._set('cc_centers', []);
+    return [];
+  },
+  addCCCenter: function(c){
+    var list = this.getCCCenters();
+    c.id = 'cc_'+Date.now();
+    list.push(c);
+    DB._set('cc_centers', list);
+    return c;
+  },
+  updateCCCenter: function(id, data){
+    var list = this.getCCCenters();
+    var i = list.findIndex(function(x){return x.id===id;});
+    if(i>=0){ list[i] = Object.assign(list[i], data); DB._set('cc_centers', list); }
+  },
+  deleteCCCenter: function(id){
+    DB._set('cc_centers', this.getCCCenters().filter(function(x){return x.id!==id;}));
+  },
+  bulkAddVendors: function(rows){
+    var list = DB.getVendors(), added = 0;
+    rows.forEach(function(r){ if(!r.name) return; r.id='v'+Date.now()+'_'+(added++); list.push(r); });
+    DB._set('vendors', list);
+    return added;
+  },
+  bulkAddSocieties: function(rows){
+    var list = DB._get('societies')||[], added = 0;
+    rows.forEach(function(r){ if(!r.name||!r.cc) return; r.id='s'+Date.now()+'_'+(added++); list.push(r); });
+    DB._set('societies', list);
+    return added;
+  },
+  bulkAddVehicles: function(rows){
+    var list = DB.getVehicles(), added = 0;
+    rows.forEach(function(r){ if(!r.no) return; r.id='veh'+Date.now()+'_'+(added++); list.push(r); });
+    DB._set('vehicles', list);
+    return added;
+  },
+  bulkAddDrivers: function(rows){
+    var list = this.getDrivers(), added = 0;
+    rows.forEach(function(r){ if(!r.name) return; r.id='dr'+Date.now()+'_'+(added++); list.push(r); });
+    DB._set('drivers', list);
+    return added;
+  },
+  bulkAddFeedTypes: function(rows){
+    var list = this.getFeedTypes(), added = 0;
+    rows.forEach(function(r){ if(!r.name) return; r.id='ft'+Date.now()+'_'+(added++); r.unit=r.unit||'Bag'; list.push(r); });
+    DB._set('feed_types', list);
+    return added;
+  }
+};
+
+// ==================== MASTERS HOME ====================
+function renderMastersHome(){
+  var masters = [
+    {key:'vendor',   icon:'🏭', label:'Vendor Master',    count:DB.getVendors().length,          color:'#1565C0', bg:'#E3F2FD', desc:'Feed suppliers & vendors'},
+    {key:'society',  icon:'🏘️', label:'Society Master',   count:(DB._get('societies')||[]).length, color:'#2E7D32', bg:'#E8F5E9', desc:'Milk producer societies'},
+    {key:'vehicle',  icon:'🚛', label:'Vehicle Master',    count:DB.getVehicles().length,          color:'#E65100', bg:'#FFF3E0', desc:'Transport vehicles'},
+    {key:'driver',   icon:'👤', label:'Driver Master',     count:MasterDB.getDrivers().length,     color:'#6A1B9A', bg:'#F3E5F5', desc:'Vehicle drivers'},
+    {key:'feedtype', icon:'🌾', label:'Feed Type Master',  count:MasterDB.getFeedTypes().length,   color:'#00695C', bg:'#E0F2F1', desc:'Feed categories & types'},
+    {key:'cc',       icon:'🏪', label:'CC Center Master',  count:MasterDB.getCCCenters().length,   color:'#B71C1C', bg:'#FFEBEE', desc:'Collection center details'},
+  ];
+  var cards = masters.map(function(m){
+    return '<div onclick="showMasterPage(\''+m.key+'\')" style="background:#fff;border:1px solid #DDE3EE;border-radius:14px;padding:20px;cursor:pointer;transition:all .2s;border-top:4px solid '+m.color+'" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 6px 20px rgba(0,0,0,.1)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\'">'
+      +'<div style="font-size:28px;margin-bottom:10px">'+m.icon+'</div>'
+      +'<div style="font-weight:700;font-size:15px;font-family:Rajdhani,sans-serif;color:#1A1A2E">'+m.label+'</div>'
+      +'<div style="font-size:12px;color:#8892A4;margin:4px 0 12px">'+m.desc+'</div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between">'
+      +'<span style="background:'+m.bg+';color:'+m.color+';padding:3px 12px;border-radius:20px;font-size:12px;font-weight:600">'+m.count+' records</span>'
+      +'<span style="color:'+m.color+';font-size:13px">Open →</span>'
+      +'</div></div>';
+  }).join('');
+
+  var importCards = masters.map(function(m){
+    return '<div style="border:1.5px dashed #B0BDD0;border-radius:10px;padding:14px;text-align:center">'
+      +'<div style="font-size:20px;margin-bottom:6px">'+m.icon+'</div>'
+      +'<div style="font-size:12px;font-weight:600;margin-bottom:8px">'+m.label+'</div>'
+      +'<label style="background:#1565C0;color:#fff;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600">📂 Choose File'
+      +'<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleImport(\''+m.key+'\',this)"></label>'
+      +'<div style="margin-top:6px"><a href="#" onclick="downloadTemplate(\''+m.key+'\');return false;" style="font-size:11px;color:#1565C0">⬇ Template download</a></div>'
+      +'</div>';
+  }).join('');
+
+  return '<div class="page-title">🗂️ Masters Management</div>'
+    +'<div class="alert alert-info" style="margin-bottom:18px"><span class="alert-icon">ℹ️</span>எல்லா Masters-உம் இங்கே create, edit, delete செய்யலாம். Excel / CSV import-உம் செய்யலாம்.</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px">'+cards+'</div>'
+    +'<div class="card"><div class="card-title">📥 Bulk Import (Excel / CSV)</div>'
+    +'<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Excel அல்லது CSV file upload செய்து masters import செய்யலாம்.</p>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">'+importCards+'</div></div>';
+}
+
+function showMasterPage(key){
+  var mc = document.getElementById('main-content');
+  var fns = {vendor:renderVendorMaster, society:renderSocietyMaster, vehicle:renderVehicleMaster, driver:renderDriverMaster, feedtype:renderFeedTypeMaster, cc:renderCCMaster};
+  if(fns[key]) mc.innerHTML = fns[key]();
+}
+
+// ==================== VENDOR MASTER ====================
+function renderVendorMaster(){
+  var vendors = DB.getVendors();
+  var editId = _editState.vendor||'';
+  var editing = editId ? vendors.find(function(x){return x.id===editId;}) : null;
+  var rows = vendors.map(function(ve, i){
+    return '<tr><td>'+(i+1)+'</td><td><strong>'+ve.name+'</strong></td><td>'+(ve.phone||'-')+'</td><td>'+(ve.address||'-')+'</td><td>'+(ve.gst||'-')+'</td>'
+      +'<td style="white-space:nowrap">'
+      +'<button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;margin-right:3px" onclick="editVendorMaster(\''+ve.id+'\')">✏️</button>'
+      +'<button class="btn btn-danger" style="padding:4px 8px;font-size:11px" onclick="deleteVendorMaster(\''+ve.id+'\')">🗑</button>'
+      +'</td></tr>';
+  }).join('');
+  return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">'
+    +'<button class="btn btn-secondary" onclick="showPage(\'d-masters\')">← Back</button>'
+    +'<div class="page-title" style="margin:0;flex:1">🏭 Vendor Master</div>'
+    +'<label class="btn btn-primary" style="cursor:pointer">📂 Import<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleImport(\'vendor\',this)"></label>'
+    +'<button class="btn" style="background:#2E7D32;color:#fff" onclick="downloadTemplate(\'vendor\')">⬇ Template</button>'
+    +'</div>'
+    +'<div class="card"><div class="card-title">'+(editing?'✏️ Edit Vendor — '+editing.name:'➕ Add New Vendor')+'</div>'
+    +'<div class="form-row">'
+    +'<div class="form-group-sm"><label>Vendor Name *</label><input type="text" id="nv-name" value="'+(editing?editing.name:'')+'" placeholder="Vendor Name"></div>'
+    +'<div class="form-group-sm"><label>Phone</label><input type="text" id="nv-phone" value="'+(editing?editing.phone||'':'')+'" placeholder="9876543210"></div>'
+    +'<div class="form-group-sm"><label>Address</label><input type="text" id="nv-addr" value="'+(editing?editing.address||'':'')+'" placeholder="City"></div>'
+    +'<div class="form-group-sm"><label>GST No.</label><input type="text" id="nv-gst" value="'+(editing?editing.gst||'':'')+'" placeholder="GST (optional)"></div>'
+    +'</div>'
+    +'<div class="form-actions">'
+    +(editing?'<button class="btn btn-secondary" onclick="_editState.vendor=null;showMasterPage(\'vendor\')">Cancel</button>':'')
+    +'<button class="btn btn-success" onclick="saveMasterVendor()">'+(editing?'Update Vendor ✓':'Save Vendor ✓')+'</button>'
+    +'</div></div>'
+    +'<div class="card"><div class="card-title">Vendors List ('+vendors.length+')</div>'
+    +(vendors.length===0?'<div class="empty-state"><div class="es-icon">🏭</div>No vendors added yet</div>'
+      :'<div class="tbl-wrap"><table><thead><tr><th>#</th><th>Vendor Name</th><th>Phone</th><th>Address</th><th>GST</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>')
+    +'</div>';
+}
+function editVendorMaster(id){ _editState.vendor=id; showMasterPage('vendor'); window.scrollTo({top:0,behavior:'smooth'}); }
+function saveMasterVendor(){
+  var name=v('nv-name'),phone=v('nv-phone'),address=v('nv-addr'),gst=v('nv-gst');
+  if(!name){showToast('Vendor name required','error');return;}
+  if(_editState.vendor){
+    var list=DB.getVendors(),i=list.findIndex(function(x){return x.id===_editState.vendor;});
+    if(i>=0) list[i]=Object.assign(list[i],{name:name,phone:phone,address:address,gst:gst});
+    DB._set('vendors',list); _editState.vendor=null; showToast('Vendor updated!','success');
+  } else { DB.addVendor({name:name,phone:phone,address:address,gst:gst}); showToast('Vendor added!','success'); }
+  showMasterPage('vendor');
+}
+function deleteVendorMaster(id){
+  if(!confirm('Delete this vendor?')) return;
+  DB._set('vendors',DB.getVendors().filter(function(x){return x.id!==id;}));
+  showMasterPage('vendor');
+}
+
+// ==================== SOCIETY MASTER ====================
+function renderSocietyMaster(){
+  var societies = DB._get('societies')||[];
+  var centers = MasterDB.getCCCenters();
+  var editId = _editState.society||'';
+  var editing = editId ? societies.find(function(x){return x.id===editId;}) : null;
+  var ccOpts = centers.map(function(c){return '<option value="'+c.id+'"'+(editing&&editing.cc===c.id?' selected':'')+'>'+c.name+'</option>';}).join('');
+  var ccFilterOpts = '<option value="">All CCs</option>'+centers.map(function(c){return '<option value="'+c.id+'">'+c.name+'</option>';}).join('');
+  var rows = societies.map(function(s,i){
+    return '<tr class="soc-row" data-cc="'+s.cc+'">'
+      +'<td>'+(i+1)+'</td><td><span class="badge badge-blue">'+s.no+'</span></td><td><strong>'+s.name+'</strong></td>'
+      +'<td><span class="badge badge-gray" style="font-size:10px">'+(s.cc||'').toUpperCase()+'</span></td>'
+      +'<td>'+(s.village||'-')+'</td><td>'+(s.incharge||'-')+'</td><td>'+(s.phone||'-')+'</td>'
+      +'<td style="white-space:nowrap">'
+      +'<button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;margin-right:3px" onclick="editSocietyMaster(\''+s.id+'\')">✏️</button>'
+      +'<button class="btn btn-danger" style="padding:4px 8px;font-size:11px" onclick="deleteSocietyMaster(\''+s.id+'\')">🗑</button>'
+      +'</td></tr>';
+  }).join('');
+  return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">'
+    +'<button class="btn btn-secondary" onclick="showPage(\'d-masters\')">← Back</button>'
+    +'<div class="page-title" style="margin:0;flex:1">🏘️ Society Master</div>'
+    +'<label class="btn btn-primary" style="cursor:pointer">📂 Import<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleImport(\'society\',this)"></label>'
+    +'<button class="btn" style="background:#2E7D32;color:#fff" onclick="downloadTemplate(\'society\')">⬇ Template</button>'
+    +'</div>'
+    +'<div class="card"><div class="card-title">'+(editing?'✏️ Edit Society — '+editing.name:'➕ Add New Society')+'</div>'
+    +'<div class="form-row">'
+    +'<div class="form-group-sm"><label>Society No. *</label><input type="text" id="ns-no" value="'+(editing?editing.no:'')+'" placeholder="S-025"></div>'
+    +'<div class="form-group-sm"><label>Society Name *</label><input type="text" id="ns-name" value="'+(editing?editing.name:'')+'" placeholder="Society Name"></div>'
+    +'<div class="form-group-sm"><label>CC Center *</label><select id="ns-cc"><option value="">-- Select CC --</option>'+ccOpts+'</select></div>'
+    +'<div class="form-group-sm"><label>Phone</label><input type="text" id="ns-phone" value="'+(editing?editing.phone||'':'')+'" placeholder="9876543210"></div>'
+    +'<div class="form-group-sm"><label>Village / Area</label><input type="text" id="ns-village" value="'+(editing?editing.village||'':'')+'" placeholder="Village name"></div>'
+    +'<div class="form-group-sm"><label>Incharge Name</label><input type="text" id="ns-incharge" value="'+(editing?editing.incharge||'':'')+'" placeholder="Incharge name"></div>'
+    +'</div>'
+    +'<div class="form-actions">'
+    +(editing?'<button class="btn btn-secondary" onclick="_editState.society=null;showMasterPage(\'society\')">Cancel</button>':'')
+    +'<button class="btn btn-success" onclick="saveMasterSociety()">'+(editing?'Update Society ✓':'Save Society ✓')+'</button>'
+    +'</div></div>'
+    +'<div class="card"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+    +'<div class="card-title" style="margin:0;flex:1">Societies List ('+societies.length+')</div>'
+    +'<select onchange="filterSocietiesTable(this.value)" style="padding:6px 10px;border:1px solid #DDE3EE;border-radius:6px;font-size:12px">'+ccFilterOpts+'</select>'
+    +'</div>'
+    +(societies.length===0?'<div class="empty-state"><div class="es-icon">🏘️</div>No societies added yet</div>'
+      :'<div class="tbl-wrap"><table><thead><tr><th>#</th><th>Soc. No.</th><th>Society Name</th><th>CC</th><th>Village</th><th>Incharge</th><th>Phone</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>')
+    +'</div>';
+}
+function filterSocietiesTable(cc){
+  document.querySelectorAll('.soc-row').forEach(function(r){ r.style.display=(!cc||r.dataset.cc===cc)?'':'none'; });
+}
+function editSocietyMaster(id){ _editState.society=id; showMasterPage('society'); window.scrollTo({top:0,behavior:'smooth'}); }
+function saveMasterSociety(){
+  var no=v('ns-no'),name=v('ns-name'),cc=v('ns-cc'),phone=v('ns-phone'),village=v('ns-village'),incharge=v('ns-incharge');
+  if(!no||!name||!cc){showToast('No, Name, CC required','error');return;}
+  var list=DB._get('societies')||[];
+  if(_editState.society){
+    var i=list.findIndex(function(x){return x.id===_editState.society;});
+    if(i>=0) list[i]=Object.assign(list[i],{no:no,name:name,cc:cc,phone:phone,village:village,incharge:incharge});
+    DB._set('societies',list); _editState.society=null; showToast('Society updated!','success');
+  } else {
+    list.push({id:'s'+Date.now(),no:no,name:name,cc:cc,phone:phone,village:village,incharge:incharge});
+    DB._set('societies',list); showToast('Society added!','success');
+  }
+  showMasterPage('society');
+}
+function deleteSocietyMaster(id){
+  if(!confirm('Delete this society?')) return;
+  DB._set('societies',(DB._get('societies')||[]).filter(function(x){return x.id!==id;}));
+  showMasterPage('society');
+}
+
+// ==================== VEHICLE MASTER ====================
+function renderVehicleMaster(){
+  var vehicles = DB.getVehicles();
+  var drivers = MasterDB.getDrivers();
+  var editId = _editState.vehicle||'';
+  var editing = editId ? vehicles.find(function(x){return x.id===editId;}) : null;
+  var drvOpts = '<option value="">-- Select Driver --</option>'+drivers.map(function(d){return '<option value="'+d.name+'"'+(editing&&editing.driver===d.name?' selected':'')+'>'+d.name+'</option>';}).join('');
+  var typeOpts = ['Mini Lorry','Lorry','Pickup Van','Auto','Other'].map(function(t){return '<option'+(editing&&editing.type===t?' selected':'')+'>'+t+'</option>';}).join('');
+  var rows = vehicles.map(function(veh,i){
+    return '<tr><td>'+(i+1)+'</td><td><span class="badge badge-blue"><strong>'+veh.no+'</strong></span></td>'
+      +'<td>'+(veh.driver||'-')+'</td><td>'+(veh.phone||'-')+'</td><td>'+(veh.type||'-')+'</td>'
+      +'<td>'+(veh.owner||'-')+'</td><td>'+(veh.capacity?veh.capacity+' Bags':'-')+'</td>'
+      +'<td style="white-space:nowrap">'
+      +'<button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;margin-right:3px" onclick="editVehicleMaster(\''+veh.id+'\')">✏️</button>'
+      +'<button class="btn btn-danger" style="padding:4px 8px;font-size:11px" onclick="deleteVehicleMaster(\''+veh.id+'\')">🗑</button>'
+      +'</td></tr>';
+  }).join('');
+  return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">'
+    +'<button class="btn btn-secondary" onclick="showPage(\'d-masters\')">← Back</button>'
+    +'<div class="page-title" style="margin:0;flex:1">🚛 Vehicle Master</div>'
+    +'<label class="btn btn-primary" style="cursor:pointer">📂 Import<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleImport(\'vehicle\',this)"></label>'
+    +'<button class="btn" style="background:#2E7D32;color:#fff" onclick="downloadTemplate(\'vehicle\')">⬇ Template</button>'
+    +'</div>'
+    +'<div class="card"><div class="card-title">'+(editing?'✏️ Edit Vehicle — '+editing.no:'➕ Add New Vehicle')+'</div>'
+    +'<div class="form-row">'
+    +'<div class="form-group-sm"><label>Vehicle No. *</label><input type="text" id="nveh-no" value="'+(editing?editing.no:'')+'" placeholder="TN 45 AB 1234"></div>'
+    +'<div class="form-group-sm"><label>Driver Name</label><select id="nveh-driver">'+drvOpts+'</select></div>'
+    +'<div class="form-group-sm"><label>Driver Phone</label><input type="text" id="nveh-phone" value="'+(editing?editing.phone||'':'')+'" placeholder="9876543210"></div>'
+    +'<div class="form-group-sm"><label>Vehicle Type</label><select id="nveh-type">'+typeOpts+'</select></div>'
+    +'<div class="form-group-sm"><label>Owner Name</label><input type="text" id="nveh-owner" value="'+(editing?editing.owner||'':'')+'" placeholder="Owner name"></div>'
+    +'<div class="form-group-sm"><label>Capacity (Bags)</label><input type="number" id="nveh-cap" value="'+(editing?editing.capacity||'':'')+'" placeholder="100"></div>'
+    +'</div>'
+    +'<div class="form-actions">'
+    +(editing?'<button class="btn btn-secondary" onclick="_editState.vehicle=null;showMasterPage(\'vehicle\')">Cancel</button>':'')
+    +'<button class="btn btn-success" onclick="saveMasterVehicle()">'+(editing?'Update Vehicle ✓':'Save Vehicle ✓')+'</button>'
+    +'</div></div>'
+    +'<div class="card"><div class="card-title">Vehicles List ('+vehicles.length+')</div>'
+    +(vehicles.length===0?'<div class="empty-state"><div class="es-icon">🚛</div>No vehicles added yet</div>'
+      :'<div class="tbl-wrap"><table><thead><tr><th>#</th><th>Vehicle No.</th><th>Driver</th><th>Phone</th><th>Type</th><th>Owner</th><th>Capacity</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>')
+    +'</div>';
+}
+function editVehicleMaster(id){ _editState.vehicle=id; showMasterPage('vehicle'); window.scrollTo({top:0,behavior:'smooth'}); }
+function saveMasterVehicle(){
+  var no=v('nveh-no'),driver=v('nveh-driver'),phone=v('nveh-phone'),type=v('nveh-type'),owner=v('nveh-owner'),capacity=v('nveh-cap');
+  if(!no){showToast('Vehicle No. required','error');return;}
+  var list=DB.getVehicles();
+  if(_editState.vehicle){
+    var i=list.findIndex(function(x){return x.id===_editState.vehicle;});
+    if(i>=0) list[i]=Object.assign(list[i],{no:no,driver:driver,phone:phone,type:type,owner:owner,capacity:+capacity||0});
+    DB._set('vehicles',list); _editState.vehicle=null; showToast('Vehicle updated!','success');
+  } else {
+    list.push({id:'veh'+Date.now(),no:no,driver:driver,phone:phone,type:type,owner:owner,capacity:+capacity||0});
+    DB._set('vehicles',list); showToast('Vehicle added!','success');
+  }
+  showMasterPage('vehicle');
+}
+function deleteVehicleMaster(id){
+  if(!confirm('Delete this vehicle?')) return;
+  DB._set('vehicles',DB.getVehicles().filter(function(x){return x.id!==id;}));
+  showMasterPage('vehicle');
+}
+
+// ==================== DRIVER MASTER ====================
+function renderDriverMaster(){
+  var drivers = MasterDB.getDrivers();
+  var vehicles = DB.getVehicles();
+  var editId = _editState.driver||'';
+  var editing = editId ? drivers.find(function(x){return x.id===editId;}) : null;
+  var vehOpts = '<option value="">-- Select Vehicle --</option>'+vehicles.map(function(veh){return '<option value="'+veh.no+'"'+(editing&&editing.vehicle===veh.no?' selected':'')+'>'+veh.no+'</option>';}).join('');
+  var rows = drivers.map(function(d,i){
+    return '<tr><td>'+(i+1)+'</td><td><strong>'+d.name+'</strong></td><td>'+(d.phone||'-')+'</td>'
+      +'<td>'+(d.license||'-')+'</td>'
+      +'<td>'+(d.vehicle?'<span class="badge badge-blue">'+d.vehicle+'</span>':'-')+'</td>'
+      +'<td>'+(d.address||'-')+'</td>'
+      +'<td style="white-space:nowrap">'
+      +'<button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;margin-right:3px" onclick="editDriverMaster(\''+d.id+'\')">✏️</button>'
+      +'<button class="btn btn-danger" style="padding:4px 8px;font-size:11px" onclick="deleteDriverMaster(\''+d.id+'\')">🗑</button>'
+      +'</td></tr>';
+  }).join('');
+  return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">'
+    +'<button class="btn btn-secondary" onclick="showPage(\'d-masters\')">← Back</button>'
+    +'<div class="page-title" style="margin:0;flex:1">👤 Driver Master</div>'
+    +'<label class="btn btn-primary" style="cursor:pointer">📂 Import<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleImport(\'driver\',this)"></label>'
+    +'<button class="btn" style="background:#2E7D32;color:#fff" onclick="downloadTemplate(\'driver\')">⬇ Template</button>'
+    +'</div>'
+    +'<div class="card"><div class="card-title">'+(editing?'✏️ Edit Driver — '+editing.name:'➕ Add New Driver')+'</div>'
+    +'<div class="form-row">'
+    +'<div class="form-group-sm"><label>Driver Name *</label><input type="text" id="ndr-name" value="'+(editing?editing.name:'')+'" placeholder="Full name"></div>'
+    +'<div class="form-group-sm"><label>Phone *</label><input type="text" id="ndr-phone" value="'+(editing?editing.phone||'':'')+'" placeholder="9876543210"></div>'
+    +'<div class="form-group-sm"><label>License No.</label><input type="text" id="ndr-lic" value="'+(editing?editing.license||'':'')+'" placeholder="TN1234567890"></div>'
+    +'<div class="form-group-sm"><label>Assigned Vehicle</label><select id="ndr-veh">'+vehOpts+'</select></div>'
+    +'<div class="form-group-sm"><label>Address</label><input type="text" id="ndr-addr" value="'+(editing?editing.address||'':'')+'" placeholder="Address"></div>'
+    +'<div class="form-group-sm"><label>Aadhar No.</label><input type="text" id="ndr-aadhar" value="'+(editing?editing.aadhar||'':'')+'" placeholder="xxxx xxxx xxxx"></div>'
+    +'</div>'
+    +'<div class="form-actions">'
+    +(editing?'<button class="btn btn-secondary" onclick="_editState.driver=null;showMasterPage(\'driver\')">Cancel</button>':'')
+    +'<button class="btn btn-success" onclick="saveMasterDriver()">'+(editing?'Update Driver ✓':'Save Driver ✓')+'</button>'
+    +'</div></div>'
+    +'<div class="card"><div class="card-title">Drivers List ('+drivers.length+')</div>'
+    +(drivers.length===0?'<div class="empty-state"><div class="es-icon">👤</div>No drivers added yet</div>'
+      :'<div class="tbl-wrap"><table><thead><tr><th>#</th><th>Driver Name</th><th>Phone</th><th>License</th><th>Vehicle</th><th>Address</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>')
+    +'</div>';
+}
+function editDriverMaster(id){ _editState.driver=id; showMasterPage('driver'); window.scrollTo({top:0,behavior:'smooth'}); }
+function saveMasterDriver(){
+  var name=v('ndr-name'),phone=v('ndr-phone'),license=v('ndr-lic'),vehicle=v('ndr-veh'),address=v('ndr-addr'),aadhar=v('ndr-aadhar');
+  if(!name||!phone){showToast('Name & Phone required','error');return;}
+  if(_editState.driver){
+    MasterDB.updateDriver(_editState.driver,{name:name,phone:phone,license:license,vehicle:vehicle,address:address,aadhar:aadhar});
+    _editState.driver=null; showToast('Driver updated!','success');
+  } else { MasterDB.addDriver({name:name,phone:phone,license:license,vehicle:vehicle,address:address,aadhar:aadhar}); showToast('Driver added!','success'); }
+  showMasterPage('driver');
+}
+function deleteDriverMaster(id){
+  if(!confirm('Delete this driver?')) return;
+  MasterDB.deleteDriver(id); showMasterPage('driver');
+}
+
+// ==================== FEED TYPE MASTER ====================
+function renderFeedTypeMaster(){
+  var feedTypes = MasterDB.getFeedTypes();
+  var editId = _editState.feedtype||'';
+  var editing = editId ? feedTypes.find(function(x){return x.id===editId;}) : null;
+  var unitOpts = ['Bag','Kg','Ton','Litre'].map(function(u){return '<option'+(editing&&editing.unit===u?' selected':'')+'>'+u+'</option>';}).join('');
+  var rows = feedTypes.map(function(ft,i){
+    return '<tr><td>'+(i+1)+'</td><td><strong>'+ft.name+'</strong></td>'
+      +'<td><span class="badge badge-green">'+(ft.unit||'Bag')+'</span></td>'
+      +'<td>'+(ft.description||'-')+'</td>'
+      +'<td style="white-space:nowrap">'
+      +'<button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;margin-right:3px" onclick="editFeedTypeMaster(\''+ft.id+'\')">✏️</button>'
+      +'<button class="btn btn-danger" style="padding:4px 8px;font-size:11px" onclick="deleteFeedTypeMaster(\''+ft.id+'\')">🗑</button>'
+      +'</td></tr>';
+  }).join('');
+  return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">'
+    +'<button class="btn btn-secondary" onclick="showPage(\'d-masters\')">← Back</button>'
+    +'<div class="page-title" style="margin:0;flex:1">🌾 Feed Type Master</div>'
+    +'<label class="btn btn-primary" style="cursor:pointer">📂 Import<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleImport(\'feedtype\',this)"></label>'
+    +'<button class="btn" style="background:#2E7D32;color:#fff" onclick="downloadTemplate(\'feedtype\')">⬇ Template</button>'
+    +'</div>'
+    +'<div class="card"><div class="card-title">'+(editing?'✏️ Edit Feed Type — '+editing.name:'➕ Add New Feed Type')+'</div>'
+    +'<div class="form-row">'
+    +'<div class="form-group-sm"><label>Feed Type Name *</label><input type="text" id="nft-name" value="'+(editing?editing.name:'')+'" placeholder="e.g. Cattle Feed C"></div>'
+    +'<div class="form-group-sm"><label>Unit</label><select id="nft-unit">'+unitOpts+'</select></div>'
+    +'<div class="form-group-sm"><label>Description</label><input type="text" id="nft-desc" value="'+(editing?editing.description||'':'')+'" placeholder="Short description"></div>'
+    +'</div>'
+    +'<div class="form-actions">'
+    +(editing?'<button class="btn btn-secondary" onclick="_editState.feedtype=null;showMasterPage(\'feedtype\')">Cancel</button>':'')
+    +'<button class="btn btn-success" onclick="saveMasterFeedType()">'+(editing?'Update Feed Type ✓':'Save Feed Type ✓')+'</button>'
+    +'</div></div>'
+    +'<div class="card"><div class="card-title">Feed Types List ('+feedTypes.length+')</div>'
+    +(feedTypes.length===0?'<div class="empty-state"><div class="es-icon">🌾</div>No feed types added yet</div>'
+      :'<div class="tbl-wrap"><table><thead><tr><th>#</th><th>Feed Type</th><th>Unit</th><th>Description</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>')
+    +'</div>';
+}
+function editFeedTypeMaster(id){ _editState.feedtype=id; showMasterPage('feedtype'); window.scrollTo({top:0,behavior:'smooth'}); }
+function saveMasterFeedType(){
+  var name=v('nft-name'),unit=v('nft-unit'),description=v('nft-desc');
+  if(!name){showToast('Feed type name required','error');return;}
+  if(_editState.feedtype){
+    MasterDB.updateFeedType(_editState.feedtype,{name:name,unit:unit,description:description});
+    _editState.feedtype=null; showToast('Feed type updated!','success');
+  } else { MasterDB.addFeedType({name:name,unit:unit,description:description}); showToast('Feed type added!','success'); }
+  showMasterPage('feedtype');
+}
+function deleteFeedTypeMaster(id){
+  if(!confirm('Delete this feed type?')) return;
+  MasterDB.deleteFeedType(id); showMasterPage('feedtype');
+}
+
+// ==================== CC CENTER MASTER ====================
+function renderCCMaster(){
+  var centers = MasterDB.getCCCenters();
+  var editId = _editState.cc||'';
+  var editing = editId ? centers.find(function(x){return x.id===editId;}) : null;
+  var rows = centers.map(function(c,i){
+    return '<tr><td>'+(i+1)+'</td><td><strong>'+c.name+'</strong></td><td>'+(c.location||'-')+'</td>'
+      +'<td>'+(c.district||'-')+'</td><td>'+(c.incharge||'-')+'</td><td>'+(c.phone||'-')+'</td>'
+      +'<td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.address||'-')+'</td>'
+      +'<td style="white-space:nowrap">'
+      +'<button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;margin-right:3px" onclick="editCCMaster(\''+c.id+'\')">✏️</button>'
+      +'<button class="btn btn-danger" style="padding:4px 8px;font-size:11px" onclick="deleteCCMaster(\''+c.id+'\')">🗑</button>'
+      +'</td></tr>';
+  }).join('');
+  return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">'
+    +'<button class="btn btn-secondary" onclick="showPage(\'d-masters\')">← Back</button>'
+    +'<div class="page-title" style="margin:0;flex:1">🏪 CC Center Master</div>'
+    +'<label class="btn btn-primary" style="cursor:pointer">📂 Import<input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleImport(\'cc\',this)"></label>'
+    +'<button class="btn" style="background:#2E7D32;color:#fff" onclick="downloadTemplate(\'cc\')">⬇ Template</button>'
+    +'</div>'
+    +(centers.length===0&&!editing?'<div class="alert alert-warn"><span class="alert-icon">⚠️</span><strong>CC Centers இல்லை!</strong> — Add செய்தால் login dropdown-ல் வரும்.</div>':'')
+    +'<div class="card"><div class="card-title">'+(editing?'✏️ Edit CC Center — '+editing.name:'➕ Add New CC Center')+'</div>'
+    +'<div class="form-row">'
+    +'<div class="form-group-sm"><label>CC Name *</label><input type="text" id="ncc-name" value="'+(editing?editing.name:'')+'" placeholder="CC1 - Kumbakonam"></div>'
+    +'<div class="form-group-sm"><label>Location *</label><input type="text" id="ncc-loc" value="'+(editing?editing.location||'':'')+'" placeholder="Town / Village"></div>'
+    +'<div class="form-group-sm"><label>District</label><input type="text" id="ncc-dist" value="'+(editing?editing.district||'':'')+'" placeholder="District name"></div>'
+    +'<div class="form-group-sm"><label>Incharge Name</label><input type="text" id="ncc-inch" value="'+(editing?editing.incharge||'':'')+'" placeholder="Incharge name"></div>'
+    +'<div class="form-group-sm"><label>Phone</label><input type="text" id="ncc-phone" value="'+(editing?editing.phone||'':'')+'" placeholder="9876543210"></div>'
+    +'<div class="form-group-sm"><label>Address</label><input type="text" id="ncc-addr" value="'+(editing?editing.address||'':'')+'" placeholder="Full address"></div>'
+    +'</div>'
+    +'<div class="form-actions">'
+    +(editing?'<button class="btn btn-secondary" onclick="_editState.cc=null;showMasterPage(\'cc\')">Cancel</button>':'')
+    +'<button class="btn btn-success" onclick="saveMasterCC()">'+(editing?'Update CC Center ✓':'Save CC Center ✓')+'</button>'
+    +'</div></div>'
+    +'<div class="card"><div class="card-title">CC Centers List ('+centers.length+') <span style="font-size:11px;color:#5A6072;font-weight:400">— இவை Login page-ல் வரும்</span></div>'
+    +(centers.length===0?'<div class="empty-state"><div class="es-icon">🏪</div>No CC Centers added yet</div>'
+      :'<div class="tbl-wrap"><table><thead><tr><th>#</th><th>CC Name</th><th>Location</th><th>District</th><th>Incharge</th><th>Phone</th><th>Address</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>')
+    +'</div>';
+}
+function editCCMaster(id){ _editState.cc=id; showMasterPage('cc'); window.scrollTo({top:0,behavior:'smooth'}); }
+function saveMasterCC(){
+  var name=v('ncc-name'),location=v('ncc-loc'),district=v('ncc-dist'),incharge=v('ncc-inch'),phone=v('ncc-phone'),address=v('ncc-addr');
+  if(!name||!location){showToast('CC Name & Location required','error');return;}
+  if(_editState.cc){
+    MasterDB.updateCCCenter(_editState.cc,{name:name,location:location,district:district,incharge:incharge,phone:phone,address:address});
+    _editState.cc=null; showToast('CC Center updated! Login page refresh ஆகும்.','success');
+  } else {
+    MasterDB.addCCCenter({name:name,location:location,district:district,incharge:incharge,phone:phone,address:address});
+    showToast('CC Center added! Login page-ல் இப்போது வரும்.','success');
+  }
+  populateLoginDropdown();
+  showMasterPage('cc');
+}
+function deleteCCMaster(id){
+  if(!confirm('Delete this CC center? Login page-லிருந்தும் போகும்!')) return;
+  MasterDB.deleteCCCenter(id); populateLoginDropdown(); showMasterPage('cc');
+}
+
+// ==================== IMPORT / EXPORT ====================
+var TEMPLATES = {
+  vendor:  {headers:['name','phone','address','gst'], sample:[['Sri Murugan Feeds','9876543210','Kumbakonam','29ABCDE1234F1Z5']]},
+  society: {headers:['no','name','cc','phone','village','incharge'], sample:[['S-025','New Society MPCS','cc_ID_HERE','9876500001','Village','Incharge Name']]},
+  vehicle: {headers:['no','driver','phone','type','owner','capacity'], sample:[['TN45XY9999','Rajan K','9876543210','Mini Lorry','Owner Name','80']]},
+  driver:  {headers:['name','phone','license','vehicle','address','aadhar'], sample:[['New Driver','9876500001','TN1234500001','TN45XY9999','Chennai','1234 5678 9012']]},
+  feedtype:{headers:['name','unit','description'], sample:[['Super Feed','Bag','High protein feed']]},
+  cc:      {headers:['name','location','district','incharge','phone','address'], sample:[['CC6 - Ariyalur','Ariyalur','Ariyalur','Kannan M','9876100006','Main Road']]},
+};
+
+function downloadTemplate(key){
+  var t = TEMPLATES[key];
+  if(!t) return;
+  var rows = [t.headers].concat(t.sample);
+  var csv = rows.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  var blob = new Blob([csv], {type:'text/csv'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'gkdairy_'+key+'_template.csv';
+  a.click();
+  showToast(key+' template downloaded!','info');
+}
+
+function handleImport(key, input){
+  var file = input.files[0];
+  if(!file) return;
+  var ext = file.name.split('.').pop().toLowerCase();
+  if(ext==='csv'){
+    var reader = new FileReader();
+    reader.onload = function(e){ processCSV(key, e.target.result); };
+    reader.readAsText(file);
+  } else if(ext==='xlsx'||ext==='xls'){
+    var reader = new FileReader();
+    reader.onload = function(e){ processExcel(key, e.target.result); };
+    reader.readAsArrayBuffer(file);
+  } else { showToast('CSV or Excel file மட்டும் support','error'); }
+  input.value='';
+}
+
+function processCSV(key, text){
+  var lines = text.trim().split('\n').filter(function(l){return l.trim();});
+  if(lines.length<2){showToast('File-ல் data இல்லை','error');return;}
+  var headers = parseCSVLine(lines[0]).map(function(h){return h.trim().toLowerCase().replace(/\s+/g,'_');});
+  var rows = lines.slice(1).map(function(l){
+    var vals = parseCSVLine(l), obj = {};
+    headers.forEach(function(h,i){obj[h]=vals[i]||'';});
+    return obj;
+  }).filter(function(r){return Object.values(r).some(function(v){return v;});});
+  importRows(key, rows);
+}
+
+function parseCSVLine(line){
+  var result=[],cur='',inQ=false;
+  for(var i=0;i<line.length;i++){
+    var ch=line[i];
+    if(ch==='"'){inQ=!inQ;}
+    else if(ch===','&&!inQ){result.push(cur.trim());cur='';}
+    else{cur+=ch;}
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+function processExcel(key, buffer){
+  if(typeof XLSX!=='undefined'){
+    var wb=XLSX.read(buffer,{type:'array'});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var json=XLSX.utils.sheet_to_json(ws,{defval:''});
+    var rows=json.map(function(r){
+      var obj={};
+      Object.keys(r).forEach(function(k){obj[k.trim().toLowerCase().replace(/\s+/g,'_')]=String(r[k]||'');});
+      return obj;
+    });
+    importRows(key, rows);
+  } else { showToast('Excel support இல்லை. CSV use செய்யுங்கள்.','error'); }
+}
+
+function importRows(key, rows){
+  if(!rows.length){showToast('No data found in file','error');return;}
+  var added=0;
+  try{
+    if(key==='vendor')   added=MasterDB.bulkAddVendors(rows);
+    if(key==='society')  added=MasterDB.bulkAddSocieties(rows);
+    if(key==='vehicle')  added=MasterDB.bulkAddVehicles(rows);
+    if(key==='driver')   added=MasterDB.bulkAddDrivers(rows);
+    if(key==='feedtype') added=MasterDB.bulkAddFeedTypes(rows);
+    if(key==='cc'){
+      var list=MasterDB.getCCCenters();
+      rows.forEach(function(r){ if(!r.name) return; r.id='cc_'+Date.now()+'_'+(added++); list.push(r); });
+      DB._set('cc_centers',list);
+      populateLoginDropdown();
+    }
+    showToast(added+' records imported successfully!','success');
+    setTimeout(function(){showMasterPage(key);}, 500);
+  } catch(e){ showToast('Import error: '+e.message,'error'); }
+}
+
+// ==================== THEME SYSTEM ====================
+var THEMES = {
+  navy: {
+    name: 'Navy Blue',
+    icon: '🌊',
+    '--navy':    '#0A1628',
+    '--navy2':   '#0F2040',
+    '--navy3':   '#1A3560',
+    '--gold':    '#D4A843',
+    '--gold2':   '#F0C060',
+    '--gold3':   '#FFF0C0',
+    '--blue':    '#1E88E5',
+    '--blue2':   '#42A5F5',
+    '--green':   '#00C853',
+    '--red':     '#FF5252',
+    '--amber':   '#FFB300',
+    '--surface': '#0F2040',
+    '--surface2':'#162840',
+    '--card':    '#1A3060',
+    '--border':  'rgba(212,168,67,.18)',
+    '--border2': 'rgba(212,168,67,.35)',
+    '--text':    '#E8EDF5',
+    '--text2':   '#8A9DC0',
+    '--text3':   '#4A5F80',
+    '--accent':  '#D4A843',
+    '--accent2': '#F0C060',
+  },
+  forest: {
+    name: 'Forest Green',
+    icon: '🌿',
+    '--navy':    '#0A1F0F',
+    '--navy2':   '#0F2D16',
+    '--navy3':   '#1A4528',
+    '--gold':    '#4CAF50',
+    '--gold2':   '#81C784',
+    '--gold3':   '#C8E6C9',
+    '--blue':    '#26A69A',
+    '--blue2':   '#4DB6AC',
+    '--green':   '#00E676',
+    '--red':     '#FF5252',
+    '--amber':   '#FFD54F',
+    '--surface': '#0F2D16',
+    '--surface2':'#163820',
+    '--card':    '#1A4528',
+    '--border':  'rgba(76,175,80,.18)',
+    '--border2': 'rgba(76,175,80,.4)',
+    '--text':    '#E8F5E9',
+    '--text2':   '#81C784',
+    '--text3':   '#4CAF50',
+    '--accent':  '#4CAF50',
+    '--accent2': '#81C784',
+  },
+  sunset: {
+    name: 'Sunset',
+    icon: '🌅',
+    '--navy':    '#1A0A00',
+    '--navy2':   '#2D1200',
+    '--navy3':   '#451A00',
+    '--gold':    '#FF7043',
+    '--gold2':   '#FF8A65',
+    '--gold3':   '#FFCCBC',
+    '--blue':    '#FF9800',
+    '--blue2':   '#FFB74D',
+    '--green':   '#69F0AE',
+    '--red':     '#FF5252',
+    '--amber':   '#FFD740',
+    '--surface': '#2D1200',
+    '--surface2':'#3A1800',
+    '--card':    '#451A00',
+    '--border':  'rgba(255,112,67,.18)',
+    '--border2': 'rgba(255,112,67,.4)',
+    '--text':    '#FBE9E7',
+    '--text2':   '#FF8A65',
+    '--text3':   '#BF360C',
+    '--accent':  '#FF7043',
+    '--accent2': '#FF8A65',
+  },
+  purple: {
+    name: 'Royal Purple',
+    icon: '👑',
+    '--navy':    '#0D0A1F',
+    '--navy2':   '#160F35',
+    '--navy3':   '#241A55',
+    '--gold':    '#9C27B0',
+    '--gold2':   '#CE93D8',
+    '--gold3':   '#F3E5F5',
+    '--blue':    '#7C4DFF',
+    '--blue2':   '#B388FF',
+    '--green':   '#00E676',
+    '--red':     '#FF5252',
+    '--amber':   '#FFD740',
+    '--surface': '#160F35',
+    '--surface2':'#1E1445',
+    '--card':    '#241A55',
+    '--border':  'rgba(156,39,176,.2)',
+    '--border2': 'rgba(156,39,176,.45)',
+    '--text':    '#F3E5F5',
+    '--text2':   '#CE93D8',
+    '--text3':   '#9C27B0',
+    '--accent':  '#9C27B0',
+    '--accent2': '#CE93D8',
+  },
+};
+
+var currentTheme = localStorage.getItem('gkd_theme') || 'navy';
+
+function applyTheme(key) {
+  var t = THEMES[key];
+  if (!t) return;
+  currentTheme = key;
+  localStorage.setItem('gkd_theme', key);
+  var root = document.documentElement;
+  Object.keys(t).forEach(function(k) {
+    if (k.startsWith('--')) root.style.setProperty(k, t[k]);
+  });
+  document.querySelectorAll('.theme-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.theme === key);
+  });
+}
+
+function renderThemePicker() {
+  return '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    + Object.keys(THEMES).map(function(k) {
+      var t = THEMES[k];
+      return '<button class="theme-btn'+(k===currentTheme?' active':'')+'" data-theme="'+k+'" onclick="applyTheme(\''+k+'\')" '
+        + 'style="flex:1;min-width:100px;padding:10px 8px;background:var(--surface2);border:2px solid '+(k===currentTheme?'var(--accent)':'var(--border)')+';border-radius:10px;cursor:pointer;font-family:inherit;transition:all .2s">'
+        + '<div style="font-size:20px;margin-bottom:4px">'+t.icon+'</div>'
+        + '<div style="font-size:11px;font-weight:600;color:var(--text)">'+t.name+'</div>'
+        + '</button>';
+    }).join('')
+    + '</div>';
+}
+
+// Apply saved theme on load
+document.addEventListener('DOMContentLoaded', function() { applyTheme(currentTheme); });
+
+// ==================== SEARCHABLE SELECT COMPONENT ====================
+// Usage: searchSelect({id, options:[{value,label}], placeholder, onSelect})
+
+var _ssOpen = null;
+
+function searchSelect(cfg) {
+  var id = cfg.id;
+  var options = cfg.options || [];
+  var placeholder = cfg.placeholder || 'Search...';
+  var selected = cfg.selected || { value: '', label: '' };
+
+  return '<div class="ss-wrap" id="ss-wrap-'+id+'" style="position:relative">'
+    + '<div class="ss-display" id="ss-disp-'+id+'" onclick="toggleSS(\''+id+'\')" '
+    + 'style="width:100%;padding:13px 36px 13px 16px;background:var(--navy2);border:1.5px solid var(--border);'
+    + 'border-radius:12px;font-size:14px;color:'+(selected.value?'var(--text)':'var(--text3)')+';cursor:pointer;position:relative;user-select:none">'
+    + (selected.label || placeholder)
+    + '<span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--accent);font-size:12px">▾</span>'
+    + '</div>'
+    + '<div class="ss-dropdown" id="ss-drop-'+id+'" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;'
+    + 'background:var(--surface);border:1.5px solid var(--border2);border-radius:12px;z-index:999;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.5)">'
+    + '<div style="padding:10px">'
+    + '<input type="text" id="ss-inp-'+id+'" placeholder="🔍 தேடுங்கள்..." oninput="filterSS(\''+id+'\')" '
+    + 'style="width:100%;padding:10px 14px;background:var(--navy2);border:1.5px solid var(--border);border-radius:8px;'
+    + 'font-size:13px;color:var(--text);font-family:inherit;outline:none">'
+    + '</div>'
+    + '<div id="ss-list-'+id+'" style="max-height:220px;overflow-y:auto;padding:0 6px 8px">'
+    + renderSSOptions(options, id, '')
+    + '</div>'
+    + '</div>'
+    + '<input type="hidden" id="ss-val-'+id+'" value="'+selected.value+'">'
+    + '</div>';
+}
+
+function renderSSOptions(options, id, filter) {
+  var filtered = filter
+    ? options.filter(function(o) { return o.label.toLowerCase().includes(filter.toLowerCase()); })
+    : options;
+  if (!filtered.length) return '<div style="padding:12px;text-align:center;font-size:12px;color:var(--text3)">No results found</div>';
+  return filtered.map(function(o) {
+    return '<div class="ss-opt" onclick="selectSS(\''+id+'\',\''+o.value.replace(/'/g,"\\'")
+      +'\',\''+o.label.replace(/'/g,"\\'")+'\',\''+encodeURIComponent(o.extra||'')+'\')" '
+      + 'style="padding:10px 12px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text);transition:background .15s" '
+      + 'onmouseover="this.style.background=\'var(--navy3)\'" onmouseout="this.style.background=\'\'">'
+      + o.label
+      + (o.sub ? '<div style="font-size:11px;color:var(--text2);margin-top:2px">'+o.sub+'</div>' : '')
+      + '</div>';
+  }).join('');
+}
+
+function toggleSS(id) {
+  var drop = document.getElementById('ss-drop-'+id);
+  if (!drop) return;
+  var isOpen = drop.style.display !== 'none';
+  // close all others
+  document.querySelectorAll('.ss-dropdown').forEach(function(d) { d.style.display = 'none'; });
+  if (!isOpen) {
+    drop.style.display = 'block';
+    var inp = document.getElementById('ss-inp-'+id);
+    if (inp) setTimeout(function() { inp.focus(); }, 50);
+    _ssOpen = id;
+  } else {
+    _ssOpen = null;
+  }
+}
+
+function filterSS(id) {
+  var inp = document.getElementById('ss-inp-'+id);
+  var list = document.getElementById('ss-list-'+id);
+  if (!inp || !list) return;
+  var wrap = document.getElementById('ss-wrap-'+id);
+  if (!wrap) return;
+  var opts = wrap._ssOptions || [];
+  list.innerHTML = renderSSOptions(opts, id, inp.value);
+}
+
+function selectSS(id, value, label, extraEnc) {
+  var valEl = document.getElementById('ss-val-'+id);
+  var dispEl = document.getElementById('ss-disp-'+id);
+  var drop = document.getElementById('ss-drop-'+id);
+  if (valEl) valEl.value = value;
+  if (dispEl) {
+    dispEl.innerHTML = label + '<span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--accent);font-size:12px">▾</span>';
+    dispEl.style.color = 'var(--text)';
+  }
+  if (drop) drop.style.display = 'none';
+  _ssOpen = null;
+  // Trigger custom callback
+  var extra = extraEnc ? decodeURIComponent(extraEnc) : '';
+  var fn = window['onSS_'+id];
+  if (fn) fn(value, label, extra);
+}
+
+function getSSValue(id) { var el = document.getElementById('ss-val-'+id); return el ? el.value : ''; }
+function getSSLabel(id) {
+  var el = document.getElementById('ss-disp-'+id);
+  if (!el) return '';
+  return el.textContent.trim().replace('▾','').trim();
+}
+
+// Store options on wrap element for filtering
+function initSS(id, options) {
+  var wrap = document.getElementById('ss-wrap-'+id);
+  if (wrap) wrap._ssOptions = options;
+}
+
+// Close on outside click
+document.addEventListener('click', function(e) {
+  if (_ssOpen && !e.target.closest('#ss-wrap-'+_ssOpen)) {
+    var drop = document.getElementById('ss-drop-'+_ssOpen);
+    if (drop) drop.style.display = 'none';
+    _ssOpen = null;
+  }
+});
+
+// ==================== EDIT / DELETE for Transactions ====================
+// These functions handle inline edit/delete for purchases, allotments, receipts, issues
+
+function editPurchase(id) {
+  var list = DB.getPurchases();
+  var item = list.find(function(x) { return x.id === id; });
+  if (!item) return;
+  _editState.purchase = id;
+  showPage('d-purchase');
+  setTimeout(function() {
+    var f = function(fid, val) { var el=document.getElementById(fid); if(el) el.value=val||''; };
+    f('p-date', item.date);
+    f('p-inv',  item.invoice);
+    f('p-qty',  item.qty);
+    f('p-rate', item.rate);
+    f('p-total',item.total);
+    // vendor SS
+    selectSS('p-vendor', item.vendorId||item.vendorName, item.vendorName, '');
+    // feed type SS
+    selectSS('p-type', item.feedType, item.feedType, '');
+    var btn = document.getElementById('purchase-save-btn');
+    var title = document.getElementById('purchase-form-title');
+    if (btn) btn.textContent = 'Update Purchase ✓';
+    if (title) title.textContent = '✏️ Edit Purchase';
+    document.getElementById('main-area').scrollTop = 0;
+  }, 100);
+}
+
+function deletePurchase(id) {
+  if (!confirm('இந்த purchase delete செய்யவா?')) return;
+  var list = DB.getPurchases().filter(function(x) { return x.id !== id; });
+  DB._set('purchases', list);
+  showToast('Purchase deleted', 'info');
+  showPage('d-purchase');
+}
+
+function editAllotment(id) {
+  var list = DB.getAllotments();
+  var item = list.find(function(x) { return x.id === id; });
+  if (!item) return;
+  _editState.allotment = id;
+  showPage('d-dispatch');
+  setTimeout(function() {
+    var f = function(fid, val) { var el=document.getElementById(fid); if(el) el.value=val||''; };
+    f('al-date', item.date);
+    f('al-qty',  item.qty);
+    f('al-rate', item.rate);
+    f('al-total',item.total);
+    f('al-veh2', item.vehicle);
+    selectSS('al-cc',   item.cc,       item.ccName,   '');
+    selectSS('al-type', item.feedType, item.feedType, '');
+    var btn = document.getElementById('dispatch-save-btn');
+    if (btn) btn.textContent = 'Update Dispatch ✓';
+    document.getElementById('main-area').scrollTop = 0;
+  }, 100);
+}
+
+function deleteAllotment(id) {
+  if (!confirm('இந்த dispatch delete செய்யவா?')) return;
+  var list = DB.getAllotments().filter(function(x) { return x.id !== id; });
+  DB._set('cc_allotments', list);
+  showToast('Dispatch deleted', 'info');
+  showPage('d-dispatch');
+}
+
+function deleteReceipt(cc, id) {
+  if (!confirm('இந்த receipt delete செய்யவா?')) return;
+  var d = DB._get('cc_receipts') || {};
+  if (d[cc]) d[cc] = d[cc].filter(function(x) { return x.id !== id; });
+  DB._set('cc_receipts', d);
+  showToast('Receipt deleted', 'info');
+  showPage('cc-receive');
+}
+
+function deleteIssue(cc, id) {
+  if (!confirm('இந்த issue delete செய்யவா?')) return;
+  var d = DB._get('cc_issues') || {};
+  if (d[cc]) d[cc] = d[cc].filter(function(x) { return x.id !== id; });
+  DB._set('cc_issues', d);
+  showToast('Issue deleted', 'info');
+  showPage('cc-issue');
+}
+
+function deleteVehicleLog(cc, id) {
+  if (!confirm('இந்த log delete செய்யவா?')) return;
+  var d = DB._get('vehicle_logs') || {};
+  if (d[cc]) d[cc] = d[cc].filter(function(x) { return x.id !== id; });
+  DB._set('vehicle_logs', d);
+  showToast('Log deleted', 'info');
+  showPage('cc-vehicle');
+}
+
+// ==================== MOBILE APP v2 — Edit/Delete + Search Select + Themes ====================
+
+var currentRole = null;
+var currentPage = null;
+var _editState = {};
+
+function getCCList(){ return (DB._get('cc_centers')||[]).map(function(c){return{id:c.id,name:c.name};}); }
+
+function getFeedTypeOpts(sel){
+  var types=MasterDB.getFeedTypes();
+  if(!types||!types.length) return '<option value="">-- Feed Type add செய்யுங்கள் --</option>';
+  return types.map(function(ft){return '<option value="'+ft.name+'"'+(sel===ft.name?' selected':'')+'>'+ft.name+'</option>';}).join('');
+}
+
+// ---- Searchable dropdown options builders ----
+function vendorOptions(){
+  return DB.getVendors().map(function(v){return{value:v.id,label:v.name,sub:v.phone||'',extra:v.name};});
+}
+function ccOptions(){
+  return getCCList().map(function(c){return{value:c.id,label:c.name};});
+}
+function feedTypeOptions(){
+  return MasterDB.getFeedTypes().map(function(f){return{value:f.name,label:f.name,sub:f.unit||'Bag'};});
+}
+function societyOptions(cc){
+  return DB.getSocieties(cc).map(function(s){return{value:s.id,label:s.no+' — '+s.name,sub:s.village||'',extra:s.no+'|'+s.name};});
+}
+function vehicleOptions(){
+  return DB.getVehicles().map(function(v){return{value:v.no,label:v.no,sub:v.driver||''};});
+}
+
+function populateLoginDropdown(){
+  var sel=document.getElementById('lt');
+  if(!sel) return;
+  while(sel.options.length>1) sel.remove(1);
+  getCCList().forEach(function(cc){
+    var o=document.createElement('option'); o.value=cc.id; o.textContent='🏪 '+cc.name; sel.appendChild(o);
+  });
+}
+
+function updateLoginHint(){
+  var t=document.getElementById('lt').value, hint=document.getElementById('login-hint');
+  if(!hint) return;
+  if(t==='dairy') hint.textContent='Main Dairy: Vendors, CC allocation, reports & balance';
+  else{ var cc=getCCList().find(function(c){return c.id===t;}); hint.textContent=cc?cc.name+': Feed receipt & society issue':''; }
+}
+
+function doLogin(){
+  var lt=document.getElementById('lt').value, uname=(document.getElementById('uname').value||'').trim();
+  if(!uname){showToast('Username உள்ளிடவும்','error');return;}
+  currentRole=lt;
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').classList.add('active');
+  var label=lt==='dairy'?'Main Dairy':(getCCList().find(function(c){return c.id===lt;})||{}).name||lt;
+  document.getElementById('role-badge').textContent=label;
+  document.getElementById('user-avatar').textContent=uname[0].toUpperCase();
+  buildNav(lt);
+}
+
+function doLogout(){
+  currentRole=null; _editState={};
+  document.getElementById('app').classList.remove('active');
+  document.getElementById('login-screen').style.display='flex';
+  populateLoginDropdown();
+}
+
+function openSettings(){ document.getElementById('settings-panel').classList.add('open'); }
+function closeSettings(){ document.getElementById('settings-panel').classList.remove('open'); }
+
+function buildNav(role){
+  var nav=document.getElementById('bottom-nav');
+  var items=role==='dairy'?[
+    {icon:'📊',label:'Overview',  page:'d-overview'},
+    {icon:'🛒',label:'Purchase',  page:'d-purchase'},
+    {icon:'🚚',label:'Dispatch',  page:'d-dispatch'},
+    {icon:'📈',label:'Reports',   page:'d-reports'},
+    {icon:'🗂️',label:'Masters',   page:'d-masters'},
+  ]:[
+    {icon:'📊',label:'Dashboard', page:'cc-dashboard'},
+    {icon:'📦',label:'Received',  page:'cc-receive'},
+    {icon:'🏘️',label:'Issue',     page:'cc-issue'},
+    {icon:'🚛',label:'Vehicles',  page:'cc-vehicle'},
+    {icon:'📈',label:'Report',    page:'cc-report'},
+  ];
+  nav.innerHTML=items.map(function(it,idx){
+    return '<div class="nav-item'+(idx===0?' active':'')+'" onclick="navTo(\''+it.page+'\',this)" data-page="'+it.page+'">'
+      +'<div class="nav-active-bar"></div><div class="nav-icon">'+it.icon+'</div>'
+      +'<div class="nav-label">'+it.label+'</div></div>';
+  }).join('');
+  showPage(items[0].page);
+}
+
+function navTo(pageId,el){
+  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
+  el.classList.add('active'); _editState={}; showPage(pageId);
+}
+
+function showPage(pageId){
+  currentPage=pageId;
+  var ma=document.getElementById('main-area');
+  var fn=PAGES[pageId];
+  ma.innerHTML=fn?fn(currentRole):'';
+  ma.scrollTop=0;
+  // init all searchable selects on this page
+  setTimeout(function(){
+    document.querySelectorAll('[data-ss-id]').forEach(function(el){
+      var id=el.dataset.ssId;
+      var opts=window['_ssOpts_'+id];
+      if(opts) initSS(id,opts);
+    });
+  },50);
+}
+
+// ---- Helpers ----
+function fmt(n){return Number(n||0).toLocaleString('en-IN');}
+function fmtDate(d){if(!d)return'-';try{return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});}catch(e){return d;}}
+function today(){return new Date().toISOString().split('T')[0];}
+function v(id){return(document.getElementById(id)||{}).value||'';}
+function num(x){return parseFloat(x)||0;}
+function badge(t,type){return'<span class="badge badge-'+(type||'gold')+'">'+t+'</span>';}
+function statusBadge(val,low,warn){
+  if(val<=low) return badge('LOW ⚠️','red');
+  if(val<=warn) return badge('WARN','amber');
+  return badge('OK','green');
+}
+function showToast(msg,type){
+  var w=document.getElementById('toast');
+  var t=document.createElement('div'); t.className='toast-item '+(type||'info'); t.textContent=msg; w.appendChild(t);
+  setTimeout(function(){t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(function(){t.remove();},300);},2800);
+}
+
+// Edit/delete action buttons HTML
+function actionBtns(editFn, deleteFn){
+  return '<td style="white-space:nowrap">'
+    +'<button onclick="'+editFn+'" style="background:rgba(30,136,229,.15);border:1px solid rgba(30,136,229,.3);color:var(--blue2);padding:5px 10px;border-radius:7px;font-size:11px;cursor:pointer;margin-right:4px">✏️</button>'
+    +'<button onclick="'+deleteFn+'" style="background:rgba(255,82,82,.12);border:1px solid rgba(255,82,82,.3);color:var(--red);padding:5px 10px;border-radius:7px;font-size:11px;cursor:pointer">🗑️</button>'
+    +'</td>';
+}
+
+// ==================== PAGES ====================
+var PAGES = {};
+
+// ---- DAIRY OVERVIEW ----
+PAGES['d-overview'] = function(){
+  var bal=DB.getDairyBalance(), purchases=DB.getPurchases(), allotments=DB.getAllotments();
+  var settings=DB.getAlertSettings(), ccList=getCCList();
+  var totalP=purchases.reduce(function(s,p){return s+num(p.qty);},0);
+  var totalA=allotments.reduce(function(s,a){return s+num(a.qty);},0);
+  var alerts=ccList.map(function(cc){
+    var stock=DB.getCCStock(cc.id);
+    return{cc:cc.name,stock:stock,low:stock<=settings.lowStock,warn:stock<=settings.warnStock&&stock>settings.lowStock};
+  }).filter(function(a){return a.low||a.warn;});
+  var ccRows=ccList.map(function(cc){
+    var stock=DB.getCCStock(cc.id),bal2=DB.getCCBalance(cc.id);
+    return'<tr><td><strong>'+cc.name+'</strong></td><td>'+stock+'</td><td>₹'+fmt(bal2)+'</td><td>'+statusBadge(stock,settings.lowStock,settings.warnStock)+'</td></tr>';
+  }).join('');
+  return '<div class="page-title"><span class="pt-icon">📊</span>Overview</div>'
+    +'<div class="stat-grid">'
+    +'<div class="stat-card gold shimmer"><div class="stat-lbl">Dairy Balance</div><div class="stat-val gold">₹'+fmt(bal)+'</div><div class="stat-sub">Available</div></div>'
+    +'<div class="stat-card"><div class="stat-lbl">Purchased</div><div class="stat-val">'+fmt(totalP)+'</div><div class="stat-sub">Total Bags</div></div>'
+    +'<div class="stat-card"><div class="stat-lbl">Allotted</div><div class="stat-val amber">'+fmt(totalA)+'</div><div class="stat-sub">To CCs</div></div>'
+    +'<div class="stat-card"><div class="stat-lbl">Alerts</div><div class="stat-val red">'+alerts.length+'</div><div class="stat-sub">CCs low</div></div>'
+    +'</div>'
+    +(ccList.length===0?'<div class="alert alert-warn"><span class="alert-icon">⚠️</span><div>CC Centers இல்லை! Masters → CC-ல் add செய்யுங்கள்</div></div>':'')
+    +alerts.map(function(a){return'<div class="alert alert-'+(a.low?'danger':'warn')+'"><span class="alert-icon">'+(a.low?'🚨':'⚠️')+'</span><div><strong>'+a.cc+'</strong>: '+a.stock+' bags '+(a.low?'CRITICAL!':'warning')+'</div></div>';}).join('')
+    +'<div class="card"><div class="card-title"><span class="ct-icon">🏪</span>CC-wise Stock</div>'
+    +(ccList.length===0?'<div class="empty-state"><span class="empty-icon">🏪</span>No CC Centers</div>'
+      :'<div class="tbl-wrap"><table><thead><tr><th>CC</th><th>Stock</th><th>Balance</th><th>Status</th></tr></thead><tbody>'+ccRows+'</tbody></table></div>')
+    +'</div>'
+    +'<div class="card"><div class="card-title"><span class="ct-icon">🛒</span>Recent Purchases</div>'
+    +(purchases.length===0?'<div class="empty-state"><span class="empty-icon">📦</span>No purchases yet</div>'
+      :'<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Vendor</th><th>Qty</th><th>Total</th></tr></thead><tbody>'
+      +purchases.slice(0,6).map(function(p){return'<tr><td>'+fmtDate(p.date)+'</td><td>'+p.vendorName+'</td><td>'+p.qty+'</td><td>₹'+fmt(p.total)+'</td></tr>';}).join('')
+      +'</tbody></table></div>')+'</div>';
+};
+
+// ---- VENDOR PURCHASE (with search select + edit/delete) ----
+PAGES['d-purchase'] = function(){
+  var purchases=DB.getPurchases();
+  var editing=_editState.purchase?purchases.find(function(x){return x.id===_editState.purchase;}):null;
+  var vOpts=vendorOptions(), ftOpts=feedTypeOptions();
+  window['_ssOpts_p-vendor']=vOpts;
+  window['_ssOpts_p-type']=ftOpts;
+  var rows=purchases.slice(0,20).map(function(p){
+    return'<tr><td>'+fmtDate(p.date)+'</td><td>'+p.vendorName+'</td><td>'+p.feedType+'</td><td>'+p.qty+'</td><td>₹'+fmt(p.total)+'</td>'
+      +actionBtns('editPurchase(\''+p.id+'\')','deletePurchase(\''+p.id+'\')')+'</tr>';
+  }).join('');
+  return '<div class="page-title"><span class="pt-icon">🛒</span>Vendor Purchase</div>'
+    +'<div class="card">'
+    +'<div class="card-title" id="purchase-form-title"><span class="ct-icon">'+(editing?'✏️':'➕')+'</span>'+(editing?'Edit Purchase':'New Purchase')+'</div>'
+    +'<div class="form-group"><label>Date</label><input type="date" id="p-date" value="'+(editing?editing.date:today())+'"></div>'
+    +'<div class="form-group"><label>Vendor *</label>'
+    +searchSelect({id:'p-vendor',options:vOpts,placeholder:'Vendor தேடுங்கள்...',selected:editing?{value:editing.vendorId||'',label:editing.vendorName||''}:{}})+' </div>'
+    +'<div class="form-group"><label>Feed Type *</label>'
+    +searchSelect({id:'p-type',options:ftOpts,placeholder:'Feed Type தேடுங்கள்...',selected:editing?{value:editing.feedType,label:editing.feedType}:{}})+' </div>'
+    +'<div class="form-group"><label>Invoice No.</label><input type="text" id="p-inv" value="'+(editing?editing.invoice||'':'')+'" placeholder="INV-2025-001"></div>'
+    +'<div class="form-group"><label>Quantity (Bags)</label><input type="number" id="p-qty" value="'+(editing?editing.qty||'':'')+'" placeholder="50" inputmode="numeric" oninput="calcPurchase()"></div>'
+    +'<div class="form-group"><label>Rate per Bag (₹)</label><input type="number" id="p-rate" value="'+(editing?editing.rate||'':'')+'" placeholder="450" inputmode="numeric" oninput="calcPurchase()"></div>'
+    +'<div class="form-group"><label>Total (₹)</label><input type="number" id="p-total" value="'+(editing?editing.total||'':'')+'" readonly style="opacity:.7"></div>'
+    +'<div class="btn-row">'
+    +(editing?'<button class="btn btn-ghost" onclick="_editState.purchase=null;showPage(\'d-purchase\')">Cancel</button>':'')
+    +'<button class="btn btn-gold" id="purchase-save-btn" style="flex:1;justify-content:center" onclick="savePurchase()">'+(editing?'Update Purchase ✓':'💾 Save Purchase')+'</button>'
+    +'</div></div>'
+    +'<div class="card"><div class="card-title"><span class="ct-icon">📋</span>History</div>'
+    +(purchases.length===0?'<div class="empty-state"><span class="empty-icon">📦</span>No purchases yet</div>'
+      :'<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Vendor</th><th>Type</th><th>Qty</th><th>Total</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>')
+    +'</div>';
+};
+
+// ---- CC DISPATCH (with search select + edit/delete) ----
+PAGES['d-dispatch'] = function(){
+  var allotments=DB.getAllotments(), ccOpts=ccOptions(), ftOpts=feedTypeOptions(), vehOpts=vehicleOptions();
+  var editing=_editState.allotment?allotments.find(function(x){return x.id===_editState.allotment;}):null;
+  window['_ssOpts_al-cc']=ccOpts;
+  window['_ssOpts_al-type']=ftOpts;
+  window['_ssOpts_al-veh']=vehOpts;
+  var rows=allotments.slice(0,20).map(function(a){
+    return'<tr><td>'+fmtDate(a.date)+'</td><td>'+a.ccName+'</td><td>'+a.feedType+'</td><td>'+a.qty+'</td><td>'+badge(a.vehicle,'blue')+'</td>'
+      +actionBtns('editAllotment(\''+a.id+'\')','deleteAllotment(\''+a.id+'\')')+'</tr>';
+  }).join('');
+  return '<div class="page-title"><span class="pt-icon">🚚</span>CC Dispatch</div>'
+    +'<div class="card">'
+    +'<div class="card-title"><span class="ct-icon">'+(editing?'✏️':'➕')+'</span>'+(editing?'Edit Dispatch':'New Allocation')+'</div>'
+    +'<div class="form-group"><label>Date</label><input type="date" id="al-date" value="'+(editing?editing.date:today())+'"></div>'
+    +'<div class="form-group"><label>CC Center *</label>'
+    +searchSelect({id:'al-cc',options:ccOpts,placeholder:'CC தேடுங்கள்...',selected:editing?{value:editing.cc,label:editing.ccName}:{}})+' </div>'
+    +'<div class="form-group"><label>Feed Type *</label>'
+    +searchSelect({id:'al-type',options:ftOpts,placeholder:'Feed Type தேடுங்கள்...',selected:editing?{value:editing.feedType,label:editing.feedType}:{}})+' </div>'
+    +'<div class="form-group"><label>Vehicle</label>'
+    +searchSelect({id:'al-veh',options:vehOpts,placeholder:'Vehicle தேடுங்கள்...',selected:editing?{value:editing.vehicle,label:editing.vehicle}:{}})+' </div>'
+    +'<div class="form-group"><label>Vehicle (Manual Entry)</label><input type="text" id="al-veh2" value="'+(editing?editing.vehicle||'':'')+'" placeholder="TN XX AB 1234"></div>'
+    +'<div class="form-group"><label>Quantity (Bags)</label><input type="number" id="al-qty" value="'+(editing?editing.qty||'':'')+'" placeholder="30" inputmode="numeric" oninput="calcAllotment()"></div>'
+    +'<div class="form-group"><label>Rate (₹)</label><input type="number" id="al-rate" value="'+(editing?editing.rate||'':'')+'" placeholder="460" inputmode="numeric" oninput="calcAllotment()"></div>'
+    +'<div class="form-group"><label>Total (₹)</label><input type="number" id="al-total" value="'+(editing?editing.total||'':'')+'" readonly style="opacity:.7"></div>'
+    +'<div class="btn-row">'
+    +(editing?'<button class="btn btn-ghost" onclick="_editState.allotment=null;showPage(\'d-dispatch\')">Cancel</button>':'')
+    +'<button class="btn btn-gold" id="dispatch-save-btn" style="flex:1;justify-content:center" onclick="saveAllotment()">'+(editing?'Update ✓':'🚚 Send to CC')+'</button>'
+    +'</div></div>'
+    +'<div class="card"><div class="card-title"><span class="ct-icon">📋</span>History</div>'
+    +(allotments.length===0?'<div class="empty-state"><span class="empty-icon">🚚</span>No dispatches yet</div>'
+      :'<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>CC</th><th>Type</th><th>Qty</th><th>Vehicle</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>')
+    +'</div>';
+};
+
+// ---- REPORTS ----
+PAGES['d-reports'] = function(){
+  var settings=DB.getAlertSettings();
+  return '<div class="page-title"><span class="pt-icon">📈</span>Reports</div>'
+    +'<div class="card"><div class="card-title"><span class="ct-icon">🔍</span>Filter</div>'
+    +'<div class="filter-row">'
+    +'<div class="form-group" style="margin:0"><label>From</label><input type="date" id="rpt-from" value="'+today().slice(0,8)+'01"></div>'
+    +'<div class="form-group" style="margin:0"><label>To</label><input type="date" id="rpt-to" value="'+today()+'"></div>'
+    +'</div>'
+    +'<div class="form-group" style="margin-top:10px"><label>Type</label>'
+    +'<select id="rpt-type"><option value="summary">Summary</option><option value="vendor">Vendor-wise</option><option value="cc">CC-wise</option></select></div>'
+    +'<button class="btn btn-primary btn-full" style="margin-top:8px" onclick="generateReport()">Generate ▶</button></div>'
+    +'<div id="rpt-out"></div>'
+    +'<div class="card"><div class="card-title"><span class="ct-icon">🔔</span>Stock Alerts</div>'+renderAlertsList()+'</div>'
+    +'<div class="card"><div class="card-title"><span class="ct-icon">⚙️</span>Alert Settings</div>'
+    +'<div class="form-group"><label>Low Stock (Bags)</label><input type="number" id="as-low" value="'+settings.lowStock+'" inputmode="numeric"></div>'
+    +'<div class="form-group"><label>Warning Level (Bags)</label><input type="number" id="as-warn" value="'+settings.warnStock+'" inputmode="numeric"></div>'
+    +'<div class="form-group"><label>Alert Phone</label><input type="tel" id="as-phone" value="'+(settings.phone||'')+'" placeholder="9876543210"></div>'
+    +'<button class="btn btn-success btn-full" style="margin-top:4px" onclick="saveAlertSettings()">Save ✓</button></div>';
+};
+
+function renderAlertsList(){
+  var settings=DB.getAlertSettings(), ccList=getCCList();
+  if(!ccList.length) return '<div class="empty-state"><span class="empty-icon">🏪</span>No CC Centers</div>';
+  return ccList.map(function(cc){
+    var stock=DB.getCCStock(cc.id);
+    var type=stock<=settings.lowStock?'danger':stock<=settings.warnStock?'warn':'success';
+    return'<div class="alert alert-'+type+'"><span class="alert-icon">'+(stock<=settings.lowStock?'🚨':stock<=settings.warnStock?'⚠️':'✅')+'</span><div><strong>'+cc.name+'</strong>: '+stock+' bags</div></div>';
+  }).join('');
+}
+
+// ---- MASTERS HOME ----
+PAGES['d-masters'] = function(){
+  var tiles=[
+    {key:'vendor',  icon:'🏭',label:'Vendor',    count:DB.getVendors().length},
+    {key:'society', icon:'🏘️',label:'Society',   count:(DB._get('societies')||[]).length},
+    {key:'vehicle', icon:'🚛',label:'Vehicle',    count:DB.getVehicles().length},
+    {key:'driver',  icon:'👤',label:'Driver',     count:MasterDB.getDrivers().length},
+    {key:'feedtype',icon:'🌾',label:'Feed Types', count:MasterDB.getFeedTypes().length},
+    {key:'cc',      icon:'🏪',label:'CC Centers', count:MasterDB.getCCCenters().length},
+  ];
+  return '<div class="page-title"><span class="pt-icon">🗂️</span>Masters</div>'
+    +'<div class="master-grid">'+tiles.map(function(t){
+      return'<div class="master-tile" onclick="showMasterDetail(\''+t.key+'\')">'
+        +'<div class="mt-bar"></div><span class="mt-icon">'+t.icon+'</span>'
+        +'<div class="mt-label">'+t.label+'</div><div class="mt-count">'+t.count+' records</div></div>';
+    }).join('')+'</div>';
+};
+
+function showMasterDetail(key){
+  var ma=document.getElementById('main-area');
+  var fn={vendor:renderVendorMaster,society:renderSocietyMaster,vehicle:renderVehicleMaster,driver:renderDriverMaster,feedtype:renderFeedTypeMaster,cc:renderCCMaster};
+  if(fn[key]){ ma.innerHTML=fn[key](); ma.scrollTop=0; }
+}
+
+// ---- CC PAGES ----
+PAGES['cc-dashboard'] = function(cc){
+  var stock=DB.getCCStock(cc), bal=DB.getCCBalance(cc), settings=DB.getAlertSettings();
+  var ccName=(getCCList().find(function(c){return c.id===cc;})||{}).name||cc;
+  var issues=DB.getCCIssues(cc), receipts=DB.getCCReceipts(cc);
+  var totalR=receipts.reduce(function(s,r){return s+num(r.net);},0);
+  var totalI=issues.reduce(function(s,i){return s+num(i.qty);},0);
+  var dmg=receipts.reduce(function(s,r){return s+num(r.damage);},0);
+  return '<div class="page-title"><span class="pt-icon">📊</span>'+ccName+'</div>'
+    +'<div class="stat-grid">'
+    +'<div class="stat-card gold shimmer"><div class="stat-lbl">Stock</div><div class="stat-val '+(stock<=settings.lowStock?'red':stock<=settings.warnStock?'amber':'green')+'">'+stock+'</div><div class="stat-sub">Bags</div></div>'
+    +'<div class="stat-card gold"><div class="stat-lbl">Balance</div><div class="stat-val gold">₹'+fmt(bal)+'</div></div>'
+    +'<div class="stat-card"><div class="stat-lbl">Received</div><div class="stat-val green">'+totalR+'</div><div class="stat-sub">Total</div></div>'
+    +'<div class="stat-card"><div class="stat-lbl">Issued</div><div class="stat-val amber">'+totalI+'</div><div class="stat-sub">Total</div></div>'
+    +'</div>'
+    +(stock<=settings.lowStock?'<div class="alert alert-danger"><span class="alert-icon">🚨</span><div>Stock Critical! Dairy-ல் தொடர்பு கொள்ளுங்கள்!</div></div>':'')
+    +(dmg>0?'<div class="alert alert-warn"><span class="alert-icon">⚠️</span><div>'+dmg+' bags damage recorded</div></div>':'')
+    +'<div class="card"><div class="card-title"><span class="ct-icon">📋</span>Recent Issues</div>'
+    +(issues.length===0?'<div class="empty-state"><span class="empty-icon">📭</span>No issues yet</div>'
+      :'<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Society</th><th>Bags</th></tr></thead><tbody>'
+      +issues.slice(0,6).map(function(i){return'<tr><td>'+fmtDate(i.date)+'</td><td>'+i.socName+'</td><td>'+i.qty+'</td></tr>';}).join('')
+      +'</tbody></table></div>')+'</div>';
+};
+
+PAGES['cc-receive'] = function(cc){
+  var receipts=DB.getCCReceipts(cc), ftOpts=feedTypeOptions();
+  window['_ssOpts_rc-type']=ftOpts;
+  var rows=receipts.slice(0,15).map(function(r){
+    return'<tr><td>'+fmtDate(r.date)+'</td><td>'+r.vehicle+'</td><td>'+r.feedType+'</td><td>'+r.received+'</td>'
+      +'<td>'+(num(r.damage)>0?badge(r.damage,'red'):badge(0,'green'))+'</td><td>'+r.net+'</td>'
+      +'<td><button onclick="deleteReceipt(\''+cc+'\',\''+r.id+'\')" style="background:rgba(255,82,82,.12);border:1px solid rgba(255,82,82,.3);color:var(--red);padding:5px 9px;border-radius:7px;font-size:11px;cursor:pointer">🗑️</button></td></tr>';
+  }).join('');
+  return '<div class="page-title"><span class="pt-icon">📦</span>Feed Received</div>'
+    +'<div class="card"><div class="card-title"><span class="ct-icon">➕</span>Record Receipt</div>'
+    +'<div class="form-group"><label>Date</label><input type="date" id="rc-date" value="'+today()+'"></div>'
+    +'<div class="form-group"><label>Vehicle No. *</label><input type="text" id="rc-veh" placeholder="TN 45 AB 1234"></div>'
+    +'<div class="form-group"><label>Feed Type *</label>'+searchSelect({id:'rc-type',options:ftOpts,placeholder:'Feed Type தேடுங்கள்...'})+'</div>'
+    +'<div class="form-group"><label>Received (Bags)</label><input type="number" id="rc-recv" placeholder="30" inputmode="numeric" oninput="calcReceipt()"></div>'
+    +'<div class="form-group"><label>Damage / Shortage</label><input type="number" id="rc-dmg" value="0" inputmode="numeric" oninput="calcReceipt()"></div>'
+    +'<div class="form-group"><label>Net Good Bags</label><input type="number" id="rc-net" readonly style="opacity:.7"></div>'
+    +'<div class="form-group"><label>Rate (₹/Bag)</label><input type="number" id="rc-rate" placeholder="460" inputmode="numeric"></div>'
+    +'<div class="form-group"><label>Remarks</label><input type="text" id="rc-remarks" placeholder="Any notes..."></div>'
+    +'<div class="btn-row"><button class="btn btn-gold btn-full" onclick="saveReceipt(\''+cc+'\')">💾 Save Receipt</button></div></div>'
+    +'<div class="card"><div class="card-title"><span class="ct-icon">📋</span>History</div>'
+    +(receipts.length===0?'<div class="empty-state"><span class="empty-icon">📭</span>No receipts yet</div>'
+      :'<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Vehicle</th><th>Type</th><th>Recd</th><th>Dmg</th><th>Net</th><th>Del</th></tr></thead><tbody>'+rows+'</tbody></table></div>')
+    +'</div>';
+};
+
+PAGES['cc-issue'] = function(cc){
+  var societies=DB.getSocieties(cc), issues=DB.getCCIssues(cc), stock=DB.getCCStock(cc);
+  var socOpts=societyOptions(cc), ftOpts=feedTypeOptions();
+  window['_ssOpts_is-soc']=socOpts;
+  window['_ssOpts_is-type']=ftOpts;
+  var rows=issues.slice(0,15).map(function(i){
+    return'<tr><td>'+fmtDate(i.date)+'</td><td>'+badge(i.socNo,'blue')+'</td><td>'+i.socName+'</td><td>'+i.qty+'</td><td>'+i.closing+'</td>'
+      +'<td><button onclick="deleteIssue(\''+cc+'\',\''+i.id+'\')" style="background:rgba(255,82,82,.12);border:1px solid rgba(255,82,82,.3);color:var(--red);padding:5px 9px;border-radius:7px;font-size:11px;cursor:pointer">🗑️</button></td></tr>';
+  }).join('');
+  return '<div class="page-title"><span class="pt-icon">🏘️</span>Issue to Society</div>'
+    +'<div class="alert alert-info"><span class="alert-icon">ℹ️</span><div>Current Stock: <strong>'+stock+' Bags</strong></div></div>'
+    +'<div class="card"><div class="card-title"><span class="ct-icon">➕</span>New Issue</div>'
+    +'<div class="form-group"><label>Date</label><input type="date" id="is-date" value="'+today()+'"></div>'
+    +'<div class="form-group"><label>Society *</label>'+searchSelect({id:'is-soc',options:socOpts,placeholder:'Society தேடுங்கள்...'})+'</div>'
+    +'<div class="form-group"><label>Society No.</label><input type="text" id="is-socno" readonly style="opacity:.7" placeholder="Auto fill"></div>'
+    +'<div class="form-group"><label>Vehicle No. *</label><input type="text" id="is-veh" placeholder="TN 45 AB 1234"></div>'
+    +'<div class="form-group"><label>Feed Type *</label>'+searchSelect({id:'is-type',options:ftOpts,placeholder:'Feed Type தேடுங்கள்...'})+'</div>'
+    +'<div class="form-group"><label>Quantity (Bags)</label><input type="number" id="is-qty" placeholder="5" inputmode="numeric" oninput="calcIssue('+stock+')"></div>'
+    +'<div class="form-group"><label>Rate (₹/Bag)</label><input type="number" id="is-rate" placeholder="470" inputmode="numeric"></div>'
+    +'<div class="form-group"><label>Opening Balance</label><input type="number" id="is-open" value="'+stock+'" inputmode="numeric" oninput="calcIssue('+stock+')"></div>'
+    +'<div class="form-group"><label>Closing Balance</label><input type="number" id="is-close" readonly style="opacity:.7"></div>'
+    +'<div class="btn-row"><button class="btn btn-danger btn-full" onclick="saveIssue(\''+cc+'\')">Issue Feed →</button></div></div>'
+    +'<div class="card"><div class="card-title"><span class="ct-icon">📋</span>Issue History</div>'
+    +(issues.length===0?'<div class="empty-state"><span class="empty-icon">📭</span>No issues yet</div>'
+      :'<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>No.</th><th>Society</th><th>Bags</th><th>Balance</th><th>Del</th></tr></thead><tbody>'+rows+'</tbody></table></div>')
+    +'</div>';
+};
+
+PAGES['cc-vehicle'] = function(cc){
+  var logs=DB.getVehicleLogs(cc);
+  var rows=logs.slice(0,15).map(function(l){
+    return'<tr><td>'+fmtDate(l.date)+'</td><td>'+badge(l.vehicle,'blue')+'</td><td>'+l.driver+'</td>'
+      +'<td>'+(l.damage==='No Damage'?badge('None','green'):badge(l.damage,'red'))+'</td>'
+      +'<td><button onclick="deleteVehicleLog(\''+cc+'\',\''+l.id+'\')" style="background:rgba(255,82,82,.12);border:1px solid rgba(255,82,82,.3);color:var(--red);padding:5px 9px;border-radius:7px;font-size:11px;cursor:pointer">🗑️</button></td></tr>';
+  }).join('');
+  return '<div class="page-title"><span class="pt-icon">🚛</span>Vehicle Log</div>'
+    +'<div class="card"><div class="card-title"><span class="ct-icon">➕</span>New Trip</div>'
+    +'<div class="form-group"><label>Date</label><input type="date" id="vl-date" value="'+today()+'"></div>'
+    +'<div class="form-group"><label>Vehicle No. *</label><input type="text" id="vl-veh" placeholder="TN 45 AB 1234"></div>'
+    +'<div class="form-group"><label>Driver Name</label><input type="text" id="vl-driver" placeholder="Driver name"></div>'
+    +'<div class="form-group"><label>Trip Type</label><select id="vl-type"><option>Dairy to CC (Receipt)</option><option>CC to Society (Issue)</option></select></div>'
+    +'<div class="form-group"><label>Damage</label><select id="vl-dmg"><option>No Damage</option><option>Bag Damage</option><option>Vehicle Breakdown</option><option>Short Delivery</option></select></div>'
+    +'<div class="form-group"><label>Damage Bags</label><input type="number" id="vl-dmgbags" value="0" inputmode="numeric"></div>'
+    +'<div class="form-group"><label>Remarks</label><input type="text" id="vl-remarks" placeholder="Notes..."></div>'
+    +'<div class="btn-row"><button class="btn btn-primary btn-full" onclick="saveVehicleLog(\''+cc+'\')">💾 Save Log</button></div></div>'
+    +'<div class="card"><div class="card-title"><span class="ct-icon">📋</span>Trip History</div>'
+    +(logs.length===0?'<div class="empty-state"><span class="empty-icon">🚛</span>No trips logged</div>'
+      :'<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Vehicle</th><th>Driver</th><th>Damage</th><th>Del</th></tr></thead><tbody>'+rows+'</tbody></table></div>')
+    +'</div>';
+};
+
+PAGES['cc-report'] = function(cc){
+  var receipts=DB.getCCReceipts(cc), issues=DB.getCCIssues(cc);
+  var stock=DB.getCCStock(cc), bal=DB.getCCBalance(cc);
+  var dmg=receipts.reduce(function(s,r){return s+num(r.damage);},0);
+  var totalR=receipts.reduce(function(s,r){return s+num(r.net);},0);
+  var totalI=issues.reduce(function(s,i){return s+num(i.qty);},0);
+  var socMap={};
+  issues.forEach(function(i){ if(!socMap[i.socNo]) socMap[i.socNo]={no:i.socNo,name:i.socName,total:0,last:''}; socMap[i.socNo].total+=num(i.qty); if(!socMap[i.socNo].last||i.date>socMap[i.socNo].last) socMap[i.socNo].last=i.date; });
+  return '<div class="page-title"><span class="pt-icon">📈</span>Report</div>'
+    +'<div class="stat-grid">'
+    +'<div class="stat-card gold"><div class="stat-lbl">Received</div><div class="stat-val">'+totalR+'</div></div>'
+    +'<div class="stat-card"><div class="stat-lbl">Issued</div><div class="stat-val amber">'+totalI+'</div></div>'
+    +'<div class="stat-card"><div class="stat-lbl">Damage</div><div class="stat-val red">'+dmg+'</div></div>'
+    +'<div class="stat-card gold"><div class="stat-lbl">Balance</div><div class="stat-val gold">'+stock+'</div><div class="stat-sub">₹'+fmt(bal)+'</div></div>'
+    +'</div>'
+    +'<div class="card"><div class="card-title"><span class="ct-icon">🏘️</span>Society Summary</div>'
+    +(Object.keys(socMap).length===0?'<div class="empty-state"><span class="empty-icon">📭</span>No issues yet</div>'
+      :'<div class="tbl-wrap"><table><thead><tr><th>No.</th><th>Society</th><th>Bags</th><th>Last</th></tr></thead><tbody>'
+      +Object.values(socMap).map(function(s){return'<tr><td>'+badge(s.no,'blue')+'</td><td>'+s.name+'</td><td>'+s.total+'</td><td>'+fmtDate(s.last)+'</td></tr>';}).join('')
+      +'</tbody></table></div>')+'</div>';
+};
+
+// ==================== FORM SAVES ====================
+function calcPurchase(){ var q=num(v('p-qty')),r=num(v('p-rate')),t=document.getElementById('p-total'); if(t) t.value=q*r||''; }
+function savePurchase(){
+  var date=v('p-date'), vendorId=getSSValue('p-vendor'), vendorName=getSSLabel('p-vendor');
+  var feedType=getSSValue('p-type')||getSSLabel('p-type');
+  var qty=num(v('p-qty')), rate=num(v('p-rate')), invoice=v('p-inv');
+  if(!vendorId&&!vendorName){showToast('Vendor select செய்யுங்கள்','error');return;}
+  if(!feedType){showToast('Feed Type select செய்யுங்கள்','error');return;}
+  if(!qty||!rate){showToast('Qty & Rate உள்ளிடவும்','error');return;}
+  if(_editState.purchase){
+    var list=DB.getPurchases(), i=list.findIndex(function(x){return x.id===_editState.purchase;});
+    if(i>=0) list[i]=Object.assign(list[i],{date:date,vendorId:vendorId,vendorName:vendorName,feedType:feedType,qty:qty,rate:rate,total:qty*rate,invoice:invoice});
+    DB._set('purchases',list); _editState.purchase=null; showToast('Purchase updated!','success');
+  } else {
+    DB.addPurchase({date:date,vendorId:vendorId,vendorName:vendorName,feedType:feedType,qty:qty,rate:rate,total:qty*rate,invoice:invoice});
+    showToast('Purchase saved! ₹'+fmt(qty*rate),'success');
+  }
+  showPage('d-purchase');
+}
+
+function calcAllotment(){ var q=num(v('al-qty')),r=num(v('al-rate')),t=document.getElementById('al-total'); if(t) t.value=q*r||''; }
+function saveAllotment(){
+  var date=v('al-date'), cc=getSSValue('al-cc'), ccName=getSSLabel('al-cc');
+  var feedType=getSSValue('al-type')||getSSLabel('al-type');
+  var qty=num(v('al-qty')), rate=num(v('al-rate'));
+  var vehicle=v('al-veh2')||getSSValue('al-veh')||getSSLabel('al-veh');
+  if(!cc){showToast('CC select செய்யுங்கள்','error');return;}
+  if(!feedType){showToast('Feed Type select செய்யுங்கள்','error');return;}
+  if(!qty||!rate||!vehicle){showToast('Qty, Rate, Vehicle தேவை','error');return;}
+  if(_editState.allotment){
+    var list=DB.getAllotments(), i=list.findIndex(function(x){return x.id===_editState.allotment;});
+    if(i>=0) list[i]=Object.assign(list[i],{date:date,cc:cc,ccName:ccName,feedType:feedType,qty:qty,rate:rate,total:qty*rate,vehicle:vehicle});
+    DB._set('cc_allotments',list); _editState.allotment=null; showToast('Dispatch updated!','success');
+  } else {
+    DB.addAllotment({date:date,cc:cc,ccName:ccName,feedType:feedType,qty:qty,rate:rate,total:qty*rate,vehicle:vehicle});
+    showToast(qty+' bags → '+ccName,'success');
+  }
+  showPage('d-dispatch');
+}
+
+function calcReceipt(){ var recv=num(v('rc-recv')),dmg=num(v('rc-dmg')),n=document.getElementById('rc-net'); if(n) n.value=Math.max(0,recv-dmg)||''; }
+function saveReceipt(cc){
+  var date=v('rc-date'), vehicle=v('rc-veh');
+  var feedType=getSSValue('rc-type')||getSSLabel('rc-type');
+  var received=num(v('rc-recv')), damage=num(v('rc-dmg')), rate=num(v('rc-rate'));
+  if(!vehicle||!received||!rate){showToast('Vehicle, Qty, Rate தேவை','error');return;}
+  DB.addCCReceipt(cc,{date:date,vehicle:vehicle,feedType:feedType,received:received,damage:damage,net:received-damage,rate:rate,remarks:v('rc-remarks')});
+  showToast('Receipt saved! '+(received-damage)+' bags','success');
+  showPage('cc-receive');
+}
+
+// Society SS callback
+window['onSS_is-soc'] = function(value, label, extra) {
+  var parts=extra.split('|');
+  var no=document.getElementById('is-socno'); if(no) no.value=parts[0]||'';
+};
+function calcIssue(stock){ var open=num(v('is-open'))||stock, qty=num(v('is-qty')), c=document.getElementById('is-close'); if(c) c.value=Math.max(0,open-qty)||''; }
+function saveIssue(cc){
+  var date=v('is-date'), socId=getSSValue('is-soc'), socLabel=getSSLabel('is-soc');
+  var socNo=v('is-socno'), parts=socLabel.split(' — ');
+  var socName=parts.length>1?parts.slice(1).join(' — '):socLabel;
+  var vehicle=v('is-veh');
+  var feedType=getSSValue('is-type')||getSSLabel('is-type');
+  var qty=num(v('is-qty')), rate=num(v('is-rate')), opening=num(v('is-open')), closing=num(v('is-close'));
+  if(!socId){showToast('Society select செய்யுங்கள்','error');return;}
+  if(!vehicle||!qty||!rate){showToast('Vehicle, Qty, Rate தேவை','error');return;}
+  var stock=DB.getCCStock(cc);
+  if(qty>stock){showToast('Stock insufficient! '+stock+' bags மட்டும்','error');return;}
+  DB.addCCIssue(cc,{date:date,socNo:socNo,socName:socName,vehicle:vehicle,feedType:feedType,qty:qty,rate:rate,opening:opening,closing:closing});
+  showToast(qty+' bags → '+socName,'success');
+  showPage('cc-issue');
+}
+function saveVehicleLog(cc){
+  var date=v('vl-date'), vehicle=v('vl-veh'), driver=v('vl-driver');
+  if(!vehicle){showToast('Vehicle No. தேவை','error');return;}
+  DB.addVehicleLog(cc,{date:date,vehicle:vehicle,driver:driver,type:v('vl-type'),damage:v('vl-dmg'),damageBags:num(v('vl-dmgbags')),remarks:v('vl-remarks')});
+  showToast('Trip logged!','success'); showPage('cc-vehicle');
+}
+function generateReport(){
+  var from=v('rpt-from'), to=v('rpt-to'), type=v('rpt-type'), out=document.getElementById('rpt-out');
+  if(!out) return;
+  var purchases=DB.filterByDate(DB.getPurchases(),from,to);
+  var allotments=DB.filterByDate(DB.getAllotments(),from,to);
+  var totalP=purchases.reduce(function(s,p){return s+num(p.total);},0);
+  var totalQ=purchases.reduce(function(s,p){return s+num(p.qty);},0);
+  var totalA=allotments.reduce(function(s,a){return s+num(a.qty);},0);
+  out.innerHTML='<div class="card"><div class="card-title">📊 Report Result</div>'
+    +'<div class="stat-grid">'
+    +'<div class="stat-card gold"><div class="stat-lbl">Purchased</div><div class="stat-val">'+totalQ+'</div><div class="stat-sub">Bags</div></div>'
+    +'<div class="stat-card"><div class="stat-lbl">Spent</div><div class="stat-val amber">₹'+fmt(totalP)+'</div></div>'
+    +'<div class="stat-card"><div class="stat-lbl">Allotted</div><div class="stat-val">'+totalA+'</div><div class="stat-sub">Bags</div></div>'
+    +'<div class="stat-card gold"><div class="stat-lbl">Balance</div><div class="stat-val gold">₹'+fmt(DB.getDairyBalance())+'</div></div>'
+    +'</div></div>';
+}
+function saveAlertSettings(){
+  DB.saveAlertSettings({lowStock:num(v('as-low')),warnStock:num(v('as-warn')),phone:v('as-phone'),via:'SMS'});
+  showToast('Alert settings saved!','success');
+}
+function refreshCurrentPage(){ if(currentPage&&currentRole) showPage(currentPage); }
+
+
+function startApp(){
+  var saved=localStorage.getItem('gkd_script_url');
+  if(saved){ SCRIPT_URL=saved; connectSheets(); }
+  else{ document.getElementById('loader').style.display='none'; showSetup(); }
+}
+function showSetup(){
+  document.getElementById('setup-screen').style.display='flex';
+}
+function saveScriptUrl(){
+  var url=document.getElementById('setup-url').value.trim();
+  if(!url||!url.includes('script.google.com')){showToast('Valid Apps Script URL paste செய்யுங்கள்','error');return;}
+  SCRIPT_URL=url; localStorage.setItem('gkd_script_url',url); connectSheets();
+}
+function useOfflineMode(){
+  localStorage.setItem('gkd_use_local','1'); activateLocalMode();
+}
+function activateLocalMode(){
+  SHEETS_READY=true;
+  DB._get=function(key){try{return JSON.parse(localStorage.getItem('gkd_'+key)||'null');}catch(e){return null;}};
+  DB._set=function(key,val){localStorage.setItem('gkd_'+key,JSON.stringify(val));};
+  DB.clearAll=function(){Object.keys(localStorage).filter(function(k){return k.startsWith('gkd_');}).forEach(function(k){localStorage.removeItem(k);});};
+  var arrKeys=['vendors','purchases','cc_allotments','societies','vehicles','feed_types','drivers','cc_centers'];
+  arrKeys.forEach(function(k){if(!localStorage.getItem('gkd_'+k))localStorage.setItem('gkd_'+k,'[]');});
+  var objKeys=['cc_receipts','cc_issues','vehicle_logs'];
+  objKeys.forEach(function(k){if(!localStorage.getItem('gkd_'+k))localStorage.setItem('gkd_'+k,JSON.stringify({cc1:[],cc2:[],cc3:[],cc4:[],cc5:[]}));});
+  if(!localStorage.getItem('gkd_dairy_balance'))localStorage.setItem('gkd_dairy_balance','0');
+  if(!localStorage.getItem('gkd_alert_settings'))localStorage.setItem('gkd_alert_settings',JSON.stringify({lowStock:15,warnStock:25,phone:'',via:'SMS'}));
+  _cache.Vendors=DB._get('vendors')||[];
+  _cache.Purchases=DB._get('purchases')||[];
+  _cache.CC_Allotments=DB._get('cc_allotments')||[];
+  _cache.Societies=DB._get('societies')||[];
+  _cache.Vehicles=DB._get('vehicles')||[];
+  _cache.Feed_Types=DB._get('feed_types')||[];
+  _cache.Drivers=DB._get('drivers')||[];
+  _cache.CC_Centers=DB._get('cc_centers')||[];
+  _cache.CC_Receipts=[];_cache.CC_Issues=[];_cache.Vehicle_Logs=[];
+  _cache.Settings={dairy_balance:localStorage.getItem('gkd_dairy_balance')||'0'};
+  var as=DB._get('alert_settings')||{};
+  if(as.lowStock)_cache.Settings.lowStock=String(as.lowStock);
+  if(as.warnStock)_cache.Settings.warnStock=String(as.warnStock);
+  document.getElementById('setup-screen').style.display='none';
+  document.getElementById('loader').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  populateLoginDropdown();
+  showToast('Offline mode','info');
+}
+function connectSheets(){
+  document.getElementById('setup-screen').style.display='none';
+  var loader=document.getElementById('loader'); loader.style.display='flex';
+  sheetsInit(
+    function(){
+      loader.style.display='none';
+      document.getElementById('login-screen').style.display='flex';
+      populateLoginDropdown();
+      showToast('Google Sheets connected!','success');
+    },
+    function(err){
+      loader.style.display='none';
+      localStorage.removeItem('gkd_script_url');
+      document.getElementById('setup-screen').style.display='flex';
+      showToast('Connection failed. URL check செய்யுங்கள்','error');
+    }
+  );
+}
+function reconfigureSheets(){ localStorage.removeItem('gkd_script_url'); localStorage.removeItem('gkd_use_local'); location.reload(); }
+function clearAllData(){
+  if(!confirm('எல்லா data-வும் delete ஆகும்?')) return;
+  if(!confirm('Sure?')) return;
+  DB.clearAll();
+  Object.keys(_cache).forEach(function(k){_cache[k]=Array.isArray(_cache[k])?[]:{};});
+  showToast('Data cleared!','success');
+  setTimeout(function(){doLogout();},500);
+}
+window.addEventListener('DOMContentLoaded',function(){
+  applyTheme(localStorage.getItem('gkd_theme')||'navy');
+  if(localStorage.getItem('gkd_use_local')){ activateLocalMode(); return; }
+  var saved=localStorage.getItem('gkd_script_url');
+  if(saved){ SCRIPT_URL=saved; connectSheets(); }
+  else{ document.getElementById('loader').style.display='none'; showSetup(); }
+});
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js').catch(function(){});});
+}
+</script>
+</body>
+</html>
