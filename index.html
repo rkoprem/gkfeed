@@ -8,6 +8,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="GK Dairy">
 <meta name="theme-color" content="#0A1628">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="version" content="v4">
 <title>GK Dairy</title>
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -302,23 +306,23 @@ tr:hover td{background:rgba(212,168,67,.04)}
   </div>
   <div class="login-card">
     <div class="form-group">
-      <label>Login Type</label>
-      <div class="select-wrap">
-        <select id="lt" onchange="updateLoginHint()">
-          <option value="dairy">🏭 Main Dairy</option>
-        </select>
+      <label>Username / பயனர் பெயர்</label>
+      <input type="text" id="uname" placeholder="admin / cc1 / cc2..." autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Password / கடவுச்சொல்</label>
+      <input type="password" id="upwd" placeholder="Password" autocomplete="current-password">
+    </div>
+    <div class="login-hint" id="login-hint">Username மற்றும் Password உள்ளிடுங்கள்</div>
+    <button class="btn-gold btn-full" onclick="doLogin()" style="margin-top:4px">🔐 LOGIN →</button>
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);text-align:center">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Default credentials:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
+        <span style="background:var(--navy2);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11px;color:var(--text2)">🏭 admin / dairy123</span>
+        <span style="background:var(--navy2);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11px;color:var(--text2)">🏪 cc1, cc2... / cc123</span>
       </div>
+      <div style="font-size:10px;color:var(--text3);margin-top:8px">Masters → 🔑 Passwords-ல் change செய்யலாம்</div>
     </div>
-    <div class="form-group">
-      <label>Username</label>
-      <input type="text" id="uname" placeholder="பயனர் பெயர்" autocomplete="username">
-    </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="upwd" placeholder="கடவுச்சொல்" autocomplete="current-password">
-    </div>
-    <div class="login-hint" id="login-hint">Main Dairy: Vendors, CC allocation, reports & balance</div>
-    <button class="btn-gold btn-full" onclick="doLogin()" style="margin-top:4px">LOGIN →</button>
   </div>
 </div>
 
@@ -327,6 +331,11 @@ tr:hover td{background:rgba(212,168,67,.04)}
   <div class="sp-header">
     <h2>⚙️ Settings</h2>
     <span class="sp-close" onclick="closeSettings()">✕</span>
+  </div>
+  <div class="sp-item" onclick="closeSettings();openSyncModal()">
+    <span class="sp-icon">☁️</span>
+    <div class="sp-text"><div class="sp-lbl">Backup & Sync</div><div class="sp-sub">Google Sheets-ல் save / restore</div></div>
+    <span class="sp-arrow">›</span>
   </div>
   <div style="margin-bottom:16px">
   <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">🎨 Theme</div>
@@ -390,16 +399,31 @@ function lsSet(key, val) {
   try { localStorage.setItem('gkd_' + key, JSON.stringify(val)); } catch(e) {}
 }
 
-// ---- Sheets POST (fire-and-forget, non-blocking) ----
+// ---- Sync status tracking ----
+var SYNC_QUEUE = [];       // pending sync operations
+var SYNC_FAILED = 0;       // failed syncs count
+
+// ---- Sheets POST (fire-and-forget, CORS-safe) ----
 function sheetsPost(action, data) {
   if (!SCRIPT_URL) return Promise.resolve({ok:true});
   data.action = action;
+  // Use text/plain to avoid CORS preflight — Apps Script works better this way
   return fetch(SCRIPT_URL, {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+    headers: {'Content-Type': 'text/plain;charset=utf-8'},
     body: JSON.stringify(data),
-    mode: 'cors',
-  }).then(function(r) { return r.json(); }).catch(function() { return {ok:false}; });
+    redirect: 'follow',
+  }).then(function(r) {
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    return r.json();
+  }).then(function(res) {
+    if (!res.ok) { SYNC_FAILED++; console.warn('Sync failed:', action, res.error); }
+    return res;
+  }).catch(function(err) {
+    SYNC_FAILED++;
+    console.warn('Sync error:', action, err.message);
+    return {ok:false, error:err.message};
+  });
 }
 
 function sheetsGet(action, params) {
@@ -407,9 +431,9 @@ function sheetsGet(action, params) {
   params = params || {};
   params.action = action;
   var qs = Object.keys(params).map(function(k){ return k+'='+encodeURIComponent(params[k]); }).join('&');
-  return fetch(SCRIPT_URL + '?' + qs)
-    .then(function(r){ return r.json(); })
-    .catch(function(){ return {ok:false}; });
+  return fetch(SCRIPT_URL + '?' + qs, {redirect:'follow'})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .catch(function(e){ console.warn('GET error:', e.message); return {ok:false,error:e.message}; });
 }
 
 // ---- Sheets init: load from Sheets into localStorage ----
@@ -760,6 +784,107 @@ var MasterDB = {
   },
 };
 
+// ==================== MANUAL FULL SYNC ====================
+// User can trigger this from Settings — uploads entire localStorage to Sheets
+
+function fullSyncToSheets(onProgress, onComplete) {
+  if (!SCRIPT_URL) { onComplete(false, 'No Sheets URL configured'); return; }
+
+  var tasks = [
+    {key:'vendors',       sheet:'Vendors',       label:'Vendors'},
+    {key:'purchases',     sheet:'Purchases',     label:'Purchases'},
+    {key:'cc_allotments', sheet:'CC_Allotments', label:'CC Allotments'},
+    {key:'societies',     sheet:'Societies',     label:'Societies'},
+    {key:'vehicles',      sheet:'Vehicles',      label:'Vehicles'},
+    {key:'feed_types',    sheet:'Feed_Types',    label:'Feed Types'},
+    {key:'drivers',       sheet:'Drivers',       label:'Drivers'},
+    {key:'cc_centers',    sheet:'CC_Centers',    label:'CC Centers'},
+  ];
+
+  var done = 0, failed = 0;
+
+  function next(i) {
+    if (i >= tasks.length) {
+      // Also sync CC-based objects (receipts/issues/logs) — flatten them
+      var ccReceipts = lsGet('cc_receipts') || {};
+      var ccIssues = lsGet('cc_issues') || {};
+      var ccLogs = lsGet('vehicle_logs') || {};
+
+      var allReceipts = [], allIssues = [], allLogs = [];
+      Object.keys(ccReceipts).forEach(function(cc){ (ccReceipts[cc]||[]).forEach(function(r){ r.cc=cc; allReceipts.push(r); }); });
+      Object.keys(ccIssues).forEach(function(cc){ (ccIssues[cc]||[]).forEach(function(r){ r.cc=cc; allIssues.push(r); }); });
+      Object.keys(ccLogs).forEach(function(cc){ (ccLogs[cc]||[]).forEach(function(r){ r.cc=cc; allLogs.push(r); }); });
+
+      var ccTasks = [
+        {sheet:'CC_Receipts', label:'CC Receipts',  rows:allReceipts},
+        {sheet:'CC_Issues',   label:'CC Issues',    rows:allIssues},
+        {sheet:'Vehicle_Logs',label:'Vehicle Logs', rows:allLogs},
+      ];
+      syncCC(0, ccTasks);
+      return;
+    }
+
+    var task = tasks[i];
+    var data = lsGet(task.key) || [];
+    onProgress(task.label + ' ('+data.length+' records)...', done, tasks.length + 3);
+
+    sheetsPost('bulkReplace', {sheet:task.sheet, rows:data}).then(function(res){
+      if (res.ok) done++; else failed++;
+      setTimeout(function(){ next(i+1); }, 300);
+    });
+  }
+
+  function syncCC(i, ccTasks) {
+    if (i >= ccTasks.length) {
+      // Also sync dairy_balance
+      var bal = lsGet('dairy_balance') || 0;
+      sheetsPost('setSetting', {key:'dairy_balance', value:String(bal)}).then(function(){
+        onComplete(failed === 0, failed === 0 ? 'All data synced!' : (failed + ' failed out of ' + (tasks.length+3)));
+      });
+      return;
+    }
+    var t = ccTasks[i];
+    onProgress(t.label + ' ('+t.rows.length+' records)...', done, tasks.length + 3);
+    sheetsPost('bulkReplace', {sheet:t.sheet, rows:t.rows}).then(function(res){
+      if (res.ok) done++; else failed++;
+      setTimeout(function(){ syncCC(i+1, ccTasks); }, 300);
+    });
+  }
+
+  next(0);
+}
+
+// ==================== PULL FROM SHEETS (Restore) ====================
+// Useful if user switches devices and wants to load data
+
+function pullFromSheets(onComplete) {
+  if (!SCRIPT_URL) { onComplete(false, 'No Sheets URL'); return; }
+  sheetsGet('getAll').then(function(res){
+    if (!res.ok) { onComplete(false, res.error||'Pull failed'); return; }
+    var d = res.data || {};
+    var sheetToLS = {
+      'Vendors':'vendors','Purchases':'purchases','CC_Allotments':'cc_allotments',
+      'Societies':'societies','Vehicles':'vehicles','Feed_Types':'feed_types',
+      'Drivers':'drivers','CC_Centers':'cc_centers',
+    };
+    Object.keys(sheetToLS).forEach(function(sheet) {
+      if (Array.isArray(d[sheet])) lsSet(sheetToLS[sheet], d[sheet]);
+    });
+    // Rebuild CC-indexed objects from flat arrays
+    var receiptsByCC={}, issuesByCC={}, logsByCC={};
+    (d.CC_Receipts||[]).forEach(function(r){ if(!receiptsByCC[r.cc])receiptsByCC[r.cc]=[]; receiptsByCC[r.cc].push(r); });
+    (d.CC_Issues  ||[]).forEach(function(r){ if(!issuesByCC[r.cc])issuesByCC[r.cc]=[]; issuesByCC[r.cc].push(r); });
+    (d.Vehicle_Logs||[]).forEach(function(r){ if(!logsByCC[r.cc])logsByCC[r.cc]=[]; logsByCC[r.cc].push(r); });
+    lsSet('cc_receipts', receiptsByCC);
+    lsSet('cc_issues', issuesByCC);
+    lsSet('vehicle_logs', logsByCC);
+    if (d.Settings) {
+      if (d.Settings.dairy_balance) lsSet('dairy_balance', d.Settings.dairy_balance);
+    }
+    onComplete(true, 'Data restored from Sheets!');
+  });
+}
+
 // ==================== MASTERS MODULE ====================
 // Vendor, Society, Vehicle, Driver, Feed Type, CC Center
 // Create + Edit + Delete + Import (CSV/Excel) + Export Template
@@ -767,101 +892,8 @@ var MasterDB = {
 var _editState = {};
 
 // ==================== MASTER DB EXTENSIONS ====================
-var MasterDB = {
-  getFeedTypes: function(){
-    var d = DB._get('feed_types');
-    if(d) return d;
-    DB._set('feed_types', []);
-    return [];
-  },
-  addFeedType: function(ft){
-    var list = this.getFeedTypes();
-    ft.id = 'ft'+Date.now();
-    list.push(ft);
-    DB._set('feed_types', list);
-    return ft;
-  },
-  updateFeedType: function(id, data){
-    var list = this.getFeedTypes();
-    var i = list.findIndex(function(x){return x.id===id;});
-    if(i>=0){ list[i] = Object.assign(list[i], data); DB._set('feed_types', list); }
-  },
-  deleteFeedType: function(id){
-    DB._set('feed_types', this.getFeedTypes().filter(function(x){return x.id!==id;}));
-  },
-  getDrivers: function(){
-    var d = DB._get('drivers');
-    if(d) return d;
-    DB._set('drivers', []);
-    return [];
-  },
-  addDriver: function(d){
-    var list = this.getDrivers();
-    d.id = 'dr'+Date.now();
-    list.push(d);
-    DB._set('drivers', list);
-    return d;
-  },
-  updateDriver: function(id, data){
-    var list = this.getDrivers();
-    var i = list.findIndex(function(x){return x.id===id;});
-    if(i>=0){ list[i] = Object.assign(list[i], data); DB._set('drivers', list); }
-  },
-  deleteDriver: function(id){
-    DB._set('drivers', this.getDrivers().filter(function(x){return x.id!==id;}));
-  },
-  getCCCenters: function(){
-    var d = DB._get('cc_centers');
-    if(d) return d;
-    DB._set('cc_centers', []);
-    return [];
-  },
-  addCCCenter: function(c){
-    var list = this.getCCCenters();
-    c.id = 'cc_'+Date.now();
-    list.push(c);
-    DB._set('cc_centers', list);
-    return c;
-  },
-  updateCCCenter: function(id, data){
-    var list = this.getCCCenters();
-    var i = list.findIndex(function(x){return x.id===id;});
-    if(i>=0){ list[i] = Object.assign(list[i], data); DB._set('cc_centers', list); }
-  },
-  deleteCCCenter: function(id){
-    DB._set('cc_centers', this.getCCCenters().filter(function(x){return x.id!==id;}));
-  },
-  bulkAddVendors: function(rows){
-    var list = DB.getVendors(), added = 0;
-    rows.forEach(function(r){ if(!r.name) return; r.id='v'+Date.now()+'_'+(added++); list.push(r); });
-    DB._set('vendors', list);
-    return added;
-  },
-  bulkAddSocieties: function(rows){
-    var list = DB._get('societies')||[], added = 0;
-    rows.forEach(function(r){ if(!r.name||!r.cc) return; r.id='s'+Date.now()+'_'+(added++); list.push(r); });
-    DB._set('societies', list);
-    return added;
-  },
-  bulkAddVehicles: function(rows){
-    var list = DB.getVehicles(), added = 0;
-    rows.forEach(function(r){ if(!r.no) return; r.id='veh'+Date.now()+'_'+(added++); list.push(r); });
-    DB._set('vehicles', list);
-    return added;
-  },
-  bulkAddDrivers: function(rows){
-    var list = this.getDrivers(), added = 0;
-    rows.forEach(function(r){ if(!r.name) return; r.id='dr'+Date.now()+'_'+(added++); list.push(r); });
-    DB._set('drivers', list);
-    return added;
-  },
-  bulkAddFeedTypes: function(rows){
-    var list = this.getFeedTypes(), added = 0;
-    rows.forEach(function(r){ if(!r.name) return; r.id='ft'+Date.now()+'_'+(added++); r.unit=r.unit||'Bag'; list.push(r); });
-    DB._set('feed_types', list);
-    return added;
-  }
-};
+// MasterDB is defined in sheets_db.js — do not redefine here
+
 
 // ==================== MASTERS HOME ====================
 function renderMastersHome(){
@@ -2399,6 +2431,80 @@ function refreshCurrentPage(){
   if(currentPage&&currentRole&&app&&app.classList.contains('active')) showPage(currentPage);
 }
 
+// ==================== SYNC UI FUNCTIONS ====================
+function openSyncModal(){
+  var modal = document.createElement('div');
+  modal.id = 'sync-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(10,22,40,.95);backdrop-filter:blur(10px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:24px;width:100%;max-width:400px;box-shadow:var(--gold-glow)">'
+    + '<h2 style="font-family:Rajdhani;font-size:20px;color:var(--accent);margin-bottom:6px">☁️ Google Sheets Sync</h2>'
+    + '<p style="font-size:12px;color:var(--text2);margin-bottom:20px">உங்கள் device-ல் உள்ள எல்லா data-வும் Google Sheets-ல் backup ஆகும்</p>'
+    + (SCRIPT_URL ? '<div style="background:rgba(0,200,83,.1);border:1px solid rgba(0,200,83,.3);color:#80FFB0;padding:10px;border-radius:8px;font-size:12px;margin-bottom:16px">✅ Sheets URL configured</div>'
+                  : '<div style="background:rgba(255,82,82,.1);border:1px solid rgba(255,82,82,.3);color:#FF9090;padding:10px;border-radius:8px;font-size:12px;margin-bottom:16px">⚠️ No Sheets URL. Settings → Reconfigure முதலில் செய்யுங்கள்.</div>')
+    + '<div id="sync-progress" style="display:none;background:var(--navy2);border-radius:10px;padding:14px;margin-bottom:14px">'
+    + '<div id="sync-label" style="font-size:13px;color:var(--text);margin-bottom:8px">Starting...</div>'
+    + '<div style="background:var(--navy);border-radius:6px;height:8px;overflow:hidden"><div id="sync-bar" style="background:linear-gradient(90deg,var(--accent),var(--accent2));height:100%;width:0%;transition:width .3s"></div></div>'
+    + '<div id="sync-percent" style="font-size:11px;color:var(--text2);margin-top:4px;text-align:right">0%</div>'
+    + '</div>'
+    + '<div id="sync-result" style="display:none;margin-bottom:14px"></div>'
+    + (SCRIPT_URL ? '<button class="btn btn-gold btn-full" onclick="doFullSync()" style="margin-bottom:10px">⬆️ Upload to Sheets (Backup)</button>'
+                  + '<button class="btn btn-primary btn-full" onclick="doPullFromSheets()" style="margin-bottom:10px">⬇️ Download from Sheets (Restore)</button>' : '')
+    + '<button class="btn btn-ghost btn-full" onclick="document.getElementById(\'sync-modal\').remove()">Close</button>'
+    + '</div>';
+  document.body.appendChild(modal);
+}
+
+function doFullSync(){
+  var prog=document.getElementById('sync-progress');
+  var lbl=document.getElementById('sync-label');
+  var bar=document.getElementById('sync-bar');
+  var pct=document.getElementById('sync-percent');
+  var res=document.getElementById('sync-result');
+  prog.style.display='block';
+  res.style.display='none';
+
+  fullSyncToSheets(
+    function(label, done, total){
+      lbl.textContent = label;
+      var p = Math.round((done/total)*100);
+      bar.style.width = p+'%';
+      pct.textContent = p+'%';
+    },
+    function(success, msg){
+      bar.style.width='100%'; pct.textContent='100%';
+      lbl.textContent = success ? '✅ Complete!' : '⚠️ ' + msg;
+      res.style.display='block';
+      res.innerHTML = '<div style="background:'+(success?'rgba(0,200,83,.1)':'rgba(255,82,82,.1)')
+        +';border:1px solid '+(success?'rgba(0,200,83,.3)':'rgba(255,82,82,.3)')
+        +';color:'+(success?'#80FFB0':'#FF9090')
+        +';padding:10px;border-radius:8px;font-size:12px">'+(success?'✅':'⚠️')+' '+msg+'</div>';
+      showToast(success?'Backup complete! ☁️':'Sync had errors', success?'success':'error');
+    }
+  );
+}
+
+function doPullFromSheets(){
+  if(!confirm('Sheets-லிருந்து data download ஆகும். உள்ள local data replace ஆகும். Sure?')) return;
+  var prog=document.getElementById('sync-progress');
+  var lbl=document.getElementById('sync-label');
+  var bar=document.getElementById('sync-bar');
+  var res=document.getElementById('sync-result');
+  prog.style.display='block';
+  res.style.display='none';
+  lbl.textContent='Downloading from Sheets...';
+  bar.style.width='50%';
+  pullFromSheets(function(success, msg){
+    bar.style.width='100%';
+    lbl.textContent = success ? '✅ Restored!' : '⚠️ '+msg;
+    res.style.display='block';
+    res.innerHTML = '<div style="background:'+(success?'rgba(0,200,83,.1)':'rgba(255,82,82,.1)')
+      +';border:1px solid '+(success?'rgba(0,200,83,.3)':'rgba(255,82,82,.3)')
+      +';color:'+(success?'#80FFB0':'#FF9090')
+      +';padding:10px;border-radius:8px;font-size:12px">'+msg+'</div>';
+    if(success){ showToast('Data restored from Sheets!','success'); setTimeout(function(){location.reload();},1500); }
+  });
+}
+
 
 function startApp(){
   var saved=localStorage.getItem('gkd_script_url');
@@ -2413,9 +2519,9 @@ function saveScriptUrl(){
 }
 function useOfflineMode(){ localStorage.setItem('gkd_use_local','1'); activateLocalMode(); }
 function activateLocalMode(){
-  SHEETS_READY=false; // offline — no sheets sync
+  SHEETS_READY=false;
   ['vendors','purchases','cc_allotments','societies','vehicles','feed_types','drivers','cc_centers'].forEach(function(k){
-    if(!localStorage.getItem('gkd_'+k)) lsSet(k,'[]');
+    if(!localStorage.getItem('gkd_'+k)) lsSet(k,[]);
   });
   ['cc_receipts','cc_issues','vehicle_logs'].forEach(function(k){
     if(!localStorage.getItem('gkd_'+k)) lsSet(k,{});
@@ -2425,7 +2531,7 @@ function activateLocalMode(){
   document.getElementById('setup-screen').style.display='none';
   document.getElementById('loader').style.display='none';
   document.getElementById('login-screen').style.display='flex';
-  showToast('Offline mode — data device-ல் save ஆகும்','info');
+  showToast('Offline mode','info');
 }
 function connectSheets(){
   document.getElementById('setup-screen').style.display='none';
@@ -2439,18 +2545,23 @@ function connectSheets(){
     },
     function(err){
       loader.style.display='none';
-      localStorage.removeItem('gkd_script_url');
-      // Fall back to offline with localStorage data
       SHEETS_READY=false;
-      document.getElementById('setup-screen').style.display='flex';
-      showToast('Sheets connection failed. Offline mode-ல் try செய்யுங்கள்','error');
+      // If URL is saved but connection fails, use cached data (offline fallback)
+      if(localStorage.getItem('gkd_vendors')||localStorage.getItem('gkd_cc_centers')){
+        document.getElementById('login-screen').style.display='flex';
+        showToast('Offline mode (cached data used) - Sheets unavailable','info');
+      } else {
+        localStorage.removeItem('gkd_script_url');
+        document.getElementById('setup-screen').style.display='flex';
+        showToast('Sheets failed. Offline mode try செய்யுங்கள்','error');
+      }
     }
   );
 }
 function reconfigureSheets(){ localStorage.removeItem('gkd_script_url'); localStorage.removeItem('gkd_use_local'); location.reload(); }
 function clearAllData(){
   if(!confirm('எல்லா data-வும் delete ஆகும்?')) return;
-  if(!confirm('Sure? Masters, transactions எல்லாமே போகும்!')) return;
+  if(!confirm('Sure? Masters + transactions எல்லாமே போகும்!')) return;
   DB.clearAll();
   showToast('Data cleared!','success');
   setTimeout(function(){doLogout();},500);
@@ -2467,6 +2578,7 @@ window.addEventListener('DOMContentLoaded',function(){
   else{ document.getElementById('loader').style.display='none'; showSetup(); }
 });
 if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.update();});});
   window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js').catch(function(){});});
 }
 </script>
