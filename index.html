@@ -11,7 +11,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="version" content="v4">
+<meta name="version" content="v5">
 <title>GK Dairy</title>
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1758,6 +1758,34 @@ var AUTH = {
 
   saveUsers: function(users) {
     localStorage.setItem('gkd_users', JSON.stringify(users));
+    // Sync to Google Sheets so other devices can login with same passwords
+    if (typeof sheetsPost === 'function' && typeof SCRIPT_URL !== 'undefined' && SCRIPT_URL) {
+      sheetsPost('setSetting', {
+        key: 'users_data',
+        value: JSON.stringify(users)
+      });
+    }
+  },
+
+  // Pull users from Sheets (called during app startup)
+  pullUsersFromSheets: function(onDone) {
+    if (typeof sheetsGet !== 'function' || typeof SCRIPT_URL === 'undefined' || !SCRIPT_URL) {
+      if(onDone) onDone(false);
+      return;
+    }
+    sheetsGet('getAll').then(function(res){
+      if (res.ok && res.data && res.data.Settings && res.data.Settings.users_data) {
+        try {
+          var users = JSON.parse(res.data.Settings.users_data);
+          if (Array.isArray(users) && users.length > 0) {
+            localStorage.setItem('gkd_users', JSON.stringify(users));
+            if(onDone) onDone(true);
+            return;
+          }
+        } catch(e){}
+      }
+      if(onDone) onDone(false);
+    });
   },
 
   // Find user by username
@@ -2514,7 +2542,7 @@ function startApp(){
 function showSetup(){ document.getElementById('setup-screen').style.display='flex'; }
 function saveScriptUrl(){
   var url=document.getElementById('setup-url').value.trim();
-  if(!url||!url.includes('script.google.com')){showToast('Valid Apps Script URL paste செய்யுங்கள்','error');return;}
+  if(!url||!url.includes('script.google.com')){showToast('Valid URL paste செய்யுங்கள்','error');return;}
   SCRIPT_URL=url; localStorage.setItem('gkd_script_url',url); connectSheets();
 }
 function useOfflineMode(){ localStorage.setItem('gkd_use_local','1'); activateLocalMode(); }
@@ -2539,31 +2567,31 @@ function connectSheets(){
   sheetsInit(
     function(){
       SHEETS_READY=true;
-      loader.style.display='none';
-      document.getElementById('login-screen').style.display='flex';
-      showToast('Google Sheets connected! ☁️','success');
+      AUTH.pullUsersFromSheets(function(pulled){
+        loader.style.display='none';
+        document.getElementById('login-screen').style.display='flex';
+        showToast(pulled?'Sheets connected! Passwords synced':'Sheets connected!','success');
+      });
     },
     function(err){
       loader.style.display='none';
       SHEETS_READY=false;
-      // If URL is saved but connection fails, use cached data (offline fallback)
       if(localStorage.getItem('gkd_vendors')||localStorage.getItem('gkd_cc_centers')){
         document.getElementById('login-screen').style.display='flex';
-        showToast('Offline mode (cached data used) - Sheets unavailable','info');
+        showToast('Offline mode','info');
       } else {
         localStorage.removeItem('gkd_script_url');
         document.getElementById('setup-screen').style.display='flex';
-        showToast('Sheets failed. Offline mode try செய்யுங்கள்','error');
+        showToast('Sheets failed','error');
       }
     }
   );
 }
 function reconfigureSheets(){ localStorage.removeItem('gkd_script_url'); localStorage.removeItem('gkd_use_local'); location.reload(); }
 function clearAllData(){
-  if(!confirm('எல்லா data-வும் delete ஆகும்?')) return;
-  if(!confirm('Sure? Masters + transactions எல்லாமே போகும்!')) return;
-  DB.clearAll();
-  showToast('Data cleared!','success');
+  if(!confirm('Delete all data?')) return;
+  if(!confirm('Sure?')) return;
+  DB.clearAll(); showToast('Cleared!','success');
   setTimeout(function(){doLogout();},500);
 }
 function refreshCurrentPage(){
